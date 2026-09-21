@@ -382,6 +382,37 @@ GS25 1,200원
 </div>
 <div id="tab-settings" class="hide">
  <div class="card">
+   <div class="section-kicker">CLOUD</div><h3>☁️ 두 사람 함께 쓰기</h3>
+   <p class="hint">Supabase에 연결하면 두 휴대폰에서 같은 가계부를 사용할 수 있어요. Publishable Key는 이곳에 직접 붙여넣으면 됩니다.</p>
+   <label>Supabase Project URL</label>
+   <input id="sbUrl" placeholder="https://xxxxxxxx.supabase.co">
+   <label>Publishable Key</label>
+   <input id="sbKey" type="password" placeholder="sb_publishable_...">
+   <div class="grid2" style="margin-top:10px">
+     <button class="btn" onclick="cloudConnect()">☁️ 연결하기</button>
+     <button class="btn sub" onclick="cloudPull()">↻ 클라우드 불러오기</button>
+   </div>
+   <div id="cloudStatus" class="hint" style="margin-top:10px">연결되지 않음</div>
+ </div>
+ <div class="card">
+   <div class="section-kicker">ACCOUNT</div><h3>🔐 로그인</h3>
+   <label>이메일</label><input id="sbEmail" type="email" placeholder="Supabase 가입 이메일">
+   <label>비밀번호</label><input id="sbPassword" type="password" placeholder="비밀번호">
+   <div class="grid2" style="margin-top:10px">
+     <button class="btn" onclick="cloudLogin()">로그인</button>
+     <button class="btn sub" onclick="cloudLogout()">로그아웃</button>
+   </div>
+   <div id="cloudUser" class="hint" style="margin-top:10px"></div>
+ </div>
+ <div class="card">
+   <div class="section-kicker">HOUSEHOLD</div><h3>🏠 우리집 가계부</h3>
+   <button class="btn" onclick="cloudCreateHousehold()">새 가계부 만들기</button>
+   <label style="margin-top:14px">공유할 가계부 ID</label>
+   <input id="householdIdInput" placeholder="상대방에게 받은 가계부 ID">
+   <button class="btn sub" style="margin-top:8px" onclick="cloudJoinHousehold()">이 가계부에 참여하기</button>
+   <div id="householdInfo" class="hint" style="margin-top:10px"></div>
+ </div>
+ <div class="card">
    <h3>💾 백업 / 복원</h3>
    <button class="btn" onclick="backup()">데이터 내보내기 (백업)</button>
    <label style="margin-top:16px">백업 파일 불러오기</label>
@@ -398,6 +429,7 @@ GS25 1,200원
  <button id="btn-settings" onclick="showTab('settings')"><span class="ico">⚙️</span>설정</button>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ================= 데이터 ================= */
 let records   = JSON.parse(localStorage.getItem("records")   || "[]");
@@ -433,13 +465,108 @@ const CATS = {
 const COLORS = ["#1b5e42","#2a9d8f","#e07a5f","#f2cc8f","#81b29a","#6d597a","#b56576"];
 
 /* ================= 저장 / 유틸 ================= */
-function save(){
+let cloudSyncing = false;
+let cloudLoading = false;
+let sb = null;
+let householdId = localStorage.getItem("householdId") || "";
+
+function localSaveOnly(){
  localStorage.setItem("records", JSON.stringify(records));
  localStorage.setItem("accounts", JSON.stringify(accounts));
  localStorage.setItem("recurring", JSON.stringify(recurring));
  localStorage.setItem("assets", JSON.stringify(assets));
  localStorage.setItem("assetRecurring", JSON.stringify(assetRecurring));
 }
+function save(){
+ localSaveOnly();
+ if(!cloudLoading) cloudPush().catch(()=>{});
+}
+function cloudCfg(){
+ return {url:localStorage.getItem("sbUrl")||"", key:localStorage.getItem("sbKey")||""};
+}
+function cloudStatus(msg){
+ const el=document.getElementById("cloudStatus"); if(el) el.textContent=msg;
+}
+function setCloudClient(){
+ const c=cloudCfg();
+ if(!c.url || !c.key || !window.supabase) return false;
+ try{ sb=window.supabase.createClient(c.url,c.key); return true; }catch(e){ cloudStatus("연결 설정을 확인해주세요."); return false; }
+}
+async function cloudConnect(){
+ const url=document.getElementById("sbUrl")?.value.trim()||"", key=document.getElementById("sbKey")?.value.trim()||"";
+ if(!url||!key){alert("Project URL과 Publishable Key를 입력해주세요.");return;}
+ localStorage.setItem("sbUrl",url); localStorage.setItem("sbKey",key);
+ if(!setCloudClient()){alert("Supabase 연결 설정을 확인해주세요.");return;}
+ const {data,error}=await sb.auth.getSession();
+ if(error){alert("Supabase 연결 실패: "+error.message);return;}
+ cloudStatus(data.session?"☁️ 연결됨 · 로그인 상태":"☁️ 연결됨 · 로그인 필요");
+ await updateCloudUser();
+ if(data.session && householdId) await cloudPull();
+}
+async function cloudLogin(){
+ if(!sb && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
+ const email=document.getElementById("sbEmail")?.value.trim()||"", password=document.getElementById("sbPassword")?.value||"";
+ if(!email||!password){alert("이메일과 비밀번호를 입력해주세요.");return;}
+ const {data,error}=await sb.auth.signInWithPassword({email,password});
+ if(error){alert("로그인 실패: "+error.message);return;}
+ document.getElementById("sbPassword").value="";
+ cloudStatus("☁️ 로그인됨"); await updateCloudUser();
+ if(householdId) await cloudPull();
+}
+async function cloudLogout(){
+ if(sb) await sb.auth.signOut(); householdId=""; localStorage.removeItem("householdId");
+ const hi=document.getElementById("householdInfo");if(hi)hi.textContent=""; cloudStatus("로그아웃됨"); updateCloudUser();
+}
+async function updateCloudUser(){
+ if(!sb)return; const {data}=await sb.auth.getUser();
+ const el=document.getElementById("cloudUser"); if(el) el.textContent=data?.user ? `로그인: ${data.user.email}` : "로그인하지 않았어요.";
+}
+async function cloudCreateHousehold(){
+ if(!sb && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
+ const {data,error}=await sb.rpc("create_household",{p_name:"우리집 가계부"});
+ if(error){alert("가계부 만들기 실패: "+error.message+"\n\nSupabase SQL 설정을 먼저 완료해주세요.");return;}
+ householdId=data; localStorage.setItem("householdId",householdId);
+ document.getElementById("householdIdInput").value=householdId;
+ document.getElementById("householdInfo").textContent="이 ID를 배우자/공동 사용자에게 보내주세요.";
+ await cloudPush();
+}
+async function cloudJoinHousehold(){
+ if(!sb && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
+ const id=document.getElementById("householdIdInput")?.value.trim()||"";
+ if(!id){alert("가계부 ID를 입력해주세요.");return;}
+ const {data,error}=await sb.rpc("join_household",{p_household_id:id});
+ if(error){alert("참여 실패: "+error.message);return;}
+ householdId=id;localStorage.setItem("householdId",id);
+ document.getElementById("householdInfo").textContent="공유 가계부에 연결됐어요.";
+ await cloudPull();
+}
+function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,autoCategoryRules:getAutoCategoryRules()};}
+async function cloudPush(){
+ if(cloudSyncing||cloudLoading||!householdId)return;
+ if(!sb && !setCloudClient())return;
+ cloudSyncing=true;
+ try{
+   const {data:userData}=await sb.auth.getUser(); if(!userData?.user) return;
+   const {error}=await sb.from("household_data").upsert({household_id:householdId,data:cloudPayload(),updated_at:new Date().toISOString()},{onConflict:"household_id"});
+   if(error) throw error;
+   cloudStatus("☁️ 저장됨 · "+new Date().toLocaleTimeString());
+ }catch(e){ cloudStatus("☁️ 저장 실패 · 설정/RLS를 확인해주세요"); }
+ finally{cloudSyncing=false;}
+}
+async function cloudPull(){
+ if(!sb && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
+ if(!householdId){alert("먼저 가계부를 만들거나 참여해주세요.");return;}
+ const {data,error}=await sb.from("household_data").select("data").eq("household_id",householdId).maybeSingle();
+ if(error){alert("클라우드 불러오기 실패: "+error.message);return;}
+ if(!data?.data){alert("아직 클라우드 데이터가 없어요. 현재 기기의 데이터를 먼저 저장할까요?");await cloudPush();return;}
+ const d=data.data; cloudLoading=true;
+ records=d.records||[];accounts=d.accounts||[];recurring=d.recurring||[];assets=d.assets||[];assetRecurring=d.assetRecurring||[];
+ if(d.autoCategoryRules)localStorage.setItem(AUTO_CAT_KEY,JSON.stringify(d.autoCategoryRules));
+ localSaveOnly(); cloudLoading=false;
+ buildChips();buildAcctSelect();renderAssets();render();
+ cloudStatus("☁️ 클라우드 데이터를 불러왔어요.");
+}
+
 const won = n => Number(n).toLocaleString() + "원";
 const ym  = d => d.slice(0,7);
 const nowYM = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
@@ -1302,6 +1429,13 @@ function renderAnalysis(){
 }
 
 (function init(){
+ // 클라우드 설정 복원
+ const sbU=document.getElementById("sbUrl"), sbK=document.getElementById("sbKey");
+ if(sbU) sbU.value=localStorage.getItem("sbUrl")||"https://fegoelbzlomrthtpbafb.supabase.co";
+ if(sbK) sbK.value=localStorage.getItem("sbKey")||"";
+ const hh=document.getElementById("householdIdInput"); if(hh) hh.value=householdId;
+ setCloudClient();
+ if(sb){ sb.auth.getSession().then(async ({data})=>{ if(data.session){cloudStatus("☁️ 연결됨 · 로그인 상태");updateCloudUser();if(householdId) await cloudPull();} }); }
  // 야간테마 복원
  if(localStorage.getItem("dark")==="1"){
    document.body.classList.add("dark");
