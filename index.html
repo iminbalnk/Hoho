@@ -2,11 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="민경이 가계부">
-<meta name="mobile-web-app-capable" content="yes">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>가계부</title>
 <style>
  :root{
@@ -191,6 +187,12 @@ input,select,textarea{
 .analysis-summary span{display:block;font-size:11px;color:#958b7d;margin-bottom:6px}
 .month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
 .month-nav .btn{min-width:42px;padding:8px}
+
+.subtabs{display:flex;gap:8px;background:#eee6dc;border-radius:14px;padding:4px;margin-bottom:14px}
+.subtabs button{flex:1;border:0;background:transparent;border-radius:11px;padding:10px 8px;color:var(--sub);font-weight:700;cursor:pointer}
+.subtabs button.active{background:#fffaf3;color:#6e8067;box-shadow:0 3px 10px rgba(100,80,55,.08)}
+.subpane{display:block}.subpane.hide{display:none}
+
 </style>
 </head>
 <body>
@@ -222,173 +224,143 @@ input,select,textarea{
     <div class="progress" id="budgetProgress"><div id="budgetFill" style="width:0%"></div></div>
     <button class="btn sub small" style="margin-top:10px" onclick="setBudget()">예산 설정</button>
   </div>
-  <div class="card">
-    <h3>💍 결혼 준비비</h3>
-    <div class="wedding-box">
-      <div class="wedding-line"><span>총 예산</span><b id="wedBudget">설정 안 함</b></div>
-      <div class="wedding-line"><span>현재 지출</span><b id="wedSpent">0원</b></div>
-      <div class="progress"><div id="wedFill" style="width:0%"></div></div>
-      <p class="section-note">카테고리를 '결혼'으로 기록하면 여기서 자동 집계돼요.</p>
-      <button class="btn sub small" style="margin-top:10px" onclick="setWeddingBudget()">결혼 예산 설정</button>
-    </div>
-  </div>
-</div>
-
-<div class="sum-box" style="display:none">
-  <div class="sum-item"><div class="lbl">이번 달 수입</div><div class="val" id="sumIn">0원</div></div>
-  <div class="sum-item"><div class="lbl">이번 달 지출</div><div class="val" id="sumOut">0원</div></div>
-  <div class="sum-item"><div class="lbl">총 잔액</div><div class="val" id="sumBal">0원</div></div>
-</div><div class="val" style="color:var(--plus)" id="sumIn">0원</div></div>
- <div class="sum-item"><div class="lbl">이번 달 지출</div><div class="val" style="color:var(--minus)" id="sumOut">0원</div></div>
- <div class="sum-item"><div class="lbl">총 잔액</div><div class="val" id="sumBal">0원</div></div>
-</div>
 
 <!-- ===== 탭1: 입력 ===== -->
 <div id="tab-input">
-<div class="card bulk-card">
-  <div class="section-title">
-    <div>
-      <div class="section-kicker">PASTE ANYTHING</div>
-      <h3>거래내역 한 번에 붙여넣기</h3>
-    </div>
+ <div class="subtabs">
+   <button class="active" onclick="showInputSubtab('paste',this)">📋 붙여넣기</button>
+   <button onclick="showInputSubtab('manual',this)">✏️ 직접입력</button>
+   <button onclick="showInputSubtab('auto',this)">🔁 자동이체</button>
+ </div>
+
+ <div id="input-sub-paste" class="subpane">
+  <div class="card bulk-card">
+   <div class="section-title">
+    <div><div class="section-kicker">PASTE ANYTHING</div><h3>거래내역 한 번에 붙여넣기</h3></div>
     <span class="pill">다중입력</span>
-  </div>
-  <p class="muted">은행·카드 앱의 거래내역이나 문자 내용을 통째로 복사해서 붙여넣어 주세요. 날짜·금액·내용을 자동으로 나눠드려요.</p>
-  <textarea id="bulkText" class="sms-area" placeholder="은행·카드 거래내역 또는 문자를 그대로 붙여넣기
+   </div>
+   <p class="muted">은행·카드 앱 거래내역과 결제 문자를 구분하지 않고 그대로 한 번에 붙여넣어 주세요.</p>
+   <textarea id="bulkText" class="sms-area" placeholder="은행·카드 거래내역 또는 문자를 그대로 붙여넣기
 
 예)
 09.17 17:54:32 | 자동출금 카카오페이
-64%
--10,000 원
+-10,000원
 
 09.15 15:56:18 | 전자금융 조혜진
 +5,000원
 
-[문자 예시]
+[카드 문자]
 [카드승인] 09/17 17:54
 GS25 1,200원
 잔액 123,456원"></textarea>
-  <div class="row gap8 bulk-actions">
+   <div class="row gap8 bulk-actions">
     <button class="btn secondary" id="bulkParseBtn" type="button">자동으로 읽기</button>
     <button class="btn" id="bulkSaveBtn" type="button" disabled>전체 저장</button>
-  </div>
-  <div id="bulkStatus" class="muted small"></div>
-  <div id="bulkPreview" class="bulk-preview"></div>
-</div>
-
- 
-
-<div class="card">
-   <h3>📩 문자 붙여넣기</h3>
-   <textarea id="smsBox" placeholder="결제 문자를 여기에 붙여넣으세요&#10;예) [OO카드] 12,500원 스타벽스 승인"></textarea>
-   <button class="btn sub" onclick="parseSMS()">문자에서 자동 인식</button>
- </div>
-
- <div class="card">
-   <div class="toggle">
-     <button id="tIncome" onclick="setType('income')">수입</button>
-     <button id="tExpense" class="on" onclick="setType('expense')">지출</button>
    </div>
-   <label>날짜</label>
-   <input type="date" id="inDate">
-   <label>통장 / 카드</label>
-   <select id="inAcct"></select>
-   <label>카테고리</label>
-   <div class="chips" id="catChips"></div>
-   <label>금액</label>
-   <input type="number" id="inAmt" placeholder="숫자만 입력">
-   <label>메모 (선택)</label>
-   <input type="text" id="inMemo" placeholder="예: 점심값">
-   <button class="btn" onclick="addRecord()">저장하기</button>
+   <div id="bulkStatus" class="muted small"></div>
+   <div id="bulkPreview" class="bulk-preview"></div>
+  </div>
  </div>
 
- <div class="card">
+ <div id="input-sub-manual" class="subpane hide">
+  <div class="card">
+   <div class="toggle">
+    <button id="tIncome" onclick="setType('income')">수입</button>
+    <button id="tExpense" class="on" onclick="setType('expense')">지출</button>
+   </div>
+   <label>날짜</label><input type="date" id="inDate">
+   <label>통장 / 카드</label><select id="inAcct"></select>
+   <label>카테고리</label><div class="chips" id="catChips"></div>
+   <label>금액</label><input type="number" id="inAmt" placeholder="숫자만 입력">
+   <label>메모 (선택)</label><input type="text" id="inMemo" placeholder="예: 점심값">
+   <button class="btn" onclick="addRecord()">저장하기</button>
+  </div>
+  <div class="card">
    <h3>최근 내역 <span style="font-size:12px;color:var(--sub);font-weight:400">(클릭하면 수정)</span></h3>
    <div id="recentList"></div>
+  </div>
+ </div>
+
+ <div id="input-sub-auto" class="subpane hide">
+  <div class="card">
+   <div class="section-title"><div><div class="section-kicker">RECURRING</div><h3>고정 수입 · 지출</h3></div><span class="pill">매월 자동</span></div>
+   <label>종류</label>
+   <select id="recurType" onchange="updateRecurringCategory()">
+    <option value="expense">고정 지출</option><option value="income">고정 수입</option>
+   </select>
+   <label>통장·카드</label><select id="recurAcct"></select>
+   <label>금액</label><input type="number" id="recurAmt" min="1" placeholder="예: 150000">
+   <label>매월 실행일</label><input type="number" id="recurDay" min="1" max="31" placeholder="예: 25">
+   <label>카테고리</label><select id="recurCat"></select>
+   <label>메모</label><input type="text" id="recurMemo" placeholder="예: 월세 / 급여 / 보험료">
+   <button class="btn sub" onclick="addIncomeExpenseRecurring()">자동이체 등록</button>
+   <div id="incomeExpenseRecurList" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+   <div class="section-title"><div><div class="section-kicker">ACCOUNT TRANSFER</div><h3>통장 간 자동이체</h3></div><span class="pill">자산 이동</span></div>
+   <label>출금 통장</label><select id="rFrom"></select>
+   <label>입금 통장</label><select id="rTo"></select>
+   <label>금액</label><input type="number" id="rAmt" min="1" placeholder="예: 300000">
+   <label>매월 실행일</label><input type="number" id="rDay" min="1" max="31" placeholder="예: 25">
+   <label>메모</label><input type="text" id="rMemo" placeholder="예: 생활비 이체">
+   <button class="btn sub" onclick="addRecurring()">통장 간 자동이체 등록</button>
+   <div id="recurList" style="margin-top:12px"></div>
+   <p class="hint">통장 간 이체는 수입·지출에 포함하지 않고 자산만 이동해요.</p>
+  </div>
+
+  <div class="card">
+   <div class="section-title"><div><div class="section-kicker">ASSET SAVING</div><h3>미래자산 자동납입</h3></div><span class="pill">연금·주식</span></div>
+   <label>출금 통장</label><select id="arFrom"></select>
+   <label>받는 자산</label><select id="arAsset"></select>
+   <label>금액</label><input type="number" id="arAmt" min="1" placeholder="예: 300000">
+   <label>매월 실행일</label><input type="number" id="arDay" min="1" max="31" placeholder="예: 25">
+   <label>메모</label><input id="arMemo" placeholder="예: 연금저축 자동납입">
+   <button class="btn sub" onclick="addAssetRecurring()">미래자산 자동납입 등록</button>
+   <div id="assetRecurList" style="margin-top:12px"></div>
+  </div>
  </div>
 </div>
 
-<!-- ===== 탭2: 통장/카드 ===== -->
-
-<!-- ===== 반복 수입·지출 ===== -->
-<div class="card">
- <div class="section-title"><div><div class="section-kicker">RECURRING</div><h3>반복 수입 · 지출</h3></div><span class="pill">매월 자동</span></div>
- <label>종류</label><select id="recurType" onchange="updateRecurringCategory()"><option value="expense">반복 지출</option><option value="income">반복 수입</option></select>
- <label>통장·카드</label><select id="recurAcct"></select>
- <label>금액</label><input type="number" id="recurAmt" min="1" placeholder="예: 150000">
- <label>매월 실행일</label><input type="number" id="recurDay" min="1" max="31" placeholder="예: 25">
- <label>카테고리</label><select id="recurCat"></select>
- <label>메모</label><input type="text" id="recurMemo" placeholder="예: 월세 / 급여 / 보험료">
- <button class="btn sub" onclick="addIncomeExpenseRecurring()">반복 등록</button>
- <div id="incomeExpenseRecurList" style="margin-top:12px"></div>
-</div>
-
+<!-- ===== 탭2: 통장 ===== -->
 <div id="tab-accounts" class="hide">
- <div class="card">
+ <div class="subtabs">
+  <button class="active" onclick="showAssetPane('current',this)">🏦 현재자산</button>
+  <button onclick="showAssetPane('future',this)">🌱 미래자산</button>
+ </div>
+
+ <div id="asset-pane-current" class="subpane">
+  <div class="card">
    <h3>통장 · 카드 추가</h3>
    <label>이름</label><input type="text" id="acName" placeholder="예: 급여통장">
    <label>용도</label><input type="text" id="acUse" placeholder="예: 월급 및 고정지출">
-   <label>시작 잔액</label><input type="number" id="acBal" placeholder="0">
+   <label>현재 잔액</label><input type="number" id="acBal" placeholder="0">
    <button class="btn" onclick="addAccount()">추가하기</button>
+  </div>
+  <div class="card">
+   <div class="section-title"><h3>내 통장 · 카드</h3><b id="currentAssetTotal">0원</b></div>
+   <div id="acctList"></div>
+  </div>
  </div>
- <div class="card"><h3>내 통장 · 카드</h3><div id="acctList"></div></div>
-</div>
-</div>
-<div id="tab-assets" class="hide">
- <div class="card">
-  <div class="section-title"><div><div class="section-kicker">ASSET</div><h3>자산관리</h3></div><span class="pill">연금저축 · 주식</span></div>
-  <p class="muted">통장·카드와 분리해서 연금저축과 주식만 관리해요.</p>
-  <label>자산 종류</label><select id="assetType"><option value="pension">연금저축</option><option value="stock">주식</option></select>
-  <label>자산 이름</label><input id="assetName" placeholder="예: 연금저축펀드 / 삼성전자">
-  <label>현재 평가금액</label><input type="number" id="assetValue" min="0" placeholder="숫자만 입력">
-  <label>메모</label><input id="assetMemo" placeholder="예: 보유 20주">
-  <button class="btn" onclick="addAsset()">자산 추가</button>
- </div>
- <div class="card">
-  <div class="section-title"><h3>내 자산</h3><b id="assetTotal">0원</b></div>
-  <div id="assetList"></div>
- </div>
- <div class="card">
-  <div class="section-title"><div><div class="section-kicker">AUTO</div><h3>자산 자동이체</h3></div></div>
-  <label>출금 통장</label><select id="arFrom"></select>
-  <label>받는 자산</label><select id="arAsset"></select>
-  <label>금액</label><input type="number" id="arAmt" min="1" placeholder="예: 300000">
-  <label>매월 실행일</label><input type="number" id="arDay" min="1" max="31" placeholder="예: 25">
-  <label>메모</label><input id="arMemo" placeholder="예: 연금저축 자동납입">
-  <button class="btn sub" onclick="addAssetRecurring()">자산 자동이체 등록</button>
-  <div id="assetRecurList" style="margin-top:12px"></div>
+
+ <div id="asset-pane-future" class="subpane hide">
+  <div class="card">
+   <div class="section-title"><div><div class="section-kicker">FUTURE ASSET</div><h3>미래자산 관리</h3></div><span class="pill">연금저축 · 주식</span></div>
+   <p class="muted">장기적으로 모아가는 자산을 따로 관리해요.</p>
+   <label>자산 종류</label><select id="assetType"><option value="pension">연금저축</option><option value="stock">주식</option></select>
+   <label>자산 이름</label><input id="assetName" placeholder="예: 연금저축펀드 / 삼성전자">
+   <label>현재 평가금액</label><input type="number" id="assetValue" min="0" placeholder="숫자만 입력">
+   <label>메모</label><input id="assetMemo" placeholder="예: 보유 20주">
+   <button class="btn" onclick="addAsset()">자산 추가</button>
+  </div>
+  <div class="card">
+   <div class="section-title"><h3>내 미래자산</h3><b id="assetTotal">0원</b></div>
+   <div id="assetList"></div>
+  </div>
  </div>
 </div>
 
-
-<!-- ===== 탭3: 이체 ===== -->
-<div id="tab-transfer" class="hide">
- <div class="card">
-   <h3>계좌간 이체</h3>
-   <label>출금 (보내는 통장)</label><select id="tFrom"></select>
-   <label>입금 (받는 통장)</label><select id="tTo"></select>
-   <label>금액</label><input type="number" id="tAmt" placeholder="숫자만 입력">
-   <label>메모 (선택)</label><input type="text" id="tMemo" placeholder="예: 생활비 이체">
-   <button class="btn" onclick="doTransfer()">이체하기</button>
- </div>
-
- <div class="card">
-   <h3>🔄 반복이체 예약</h3>
-   <label>출금 통장</label><select id="rFrom"></select>
-   <label>입금 통장</label><select id="rTo"></select>
-   <label>금액</label><input type="number" id="rAmt" placeholder="숫자만 입력">
-   <label>매월 실행일</label><input type="number" id="rDay" min="1" max="31" placeholder="예: 25">
-   <label>메모</label><input type="text" id="rMemo" placeholder="예: 적금 이체">
-   <button class="btn sub" onclick="addRecurring()">반복이체 등록</button>
-   <div id="recurList" style="margin-top:12px"></div>
-   <p class="hint">앱을 열 때 실행일이 지난 반복이체는 자동으로 처리됩니다.</p>
- </div>
-
- <div class="card"><h3>이체 내역</h3><div id="transferList"></div></div>
-</div>
-
-<!-- ===== 탭4: 분석 ===== -->
-
+<!-- ===== 탭3: 분석 ===== -->
 <div id="tab-report" class="hide">
  <div class="card">
   <div class="section-title"><div><div class="section-kicker">OVERVIEW</div><h3>전체 자산 분산</h3></div></div>
@@ -422,8 +394,6 @@ GS25 1,200원
 <div class="navbar">
  <button id="btn-input" class="on" onclick="showTab('input')"><span class="ico">✏️</span>입력</button>
  <button id="btn-accounts" onclick="showTab('accounts')"><span class="ico">🏦</span>통장</button>
- <button id="btn-assets" onclick="showTab('assets')"><span class="ico">📈</span>자산</button>
- <button id="btn-transfer" onclick="showTab('transfer')"><span class="ico">🔄</span>이체</button>
  <button id="btn-report" onclick="showTab('report')"><span class="ico">📊</span>분석</button>
  <button id="btn-settings" onclick="showTab('settings')"><span class="ico">⚙️</span>설정</button>
 </div>
@@ -585,7 +555,6 @@ function bulkParseTransactions(raw){
     if(cur) blocks.push(cur);
   }
 
-  const year = new Date().getFullYear();
   return blocks.map((b, idx) => {
     const joined = [b.desc, ...b.lines].join(' ');
     let am = joined.match(amountRe);
@@ -739,7 +708,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* ================= 문자 붙여넣기 파싱 ================= */
 function parseSMS(){
- const txt = document.getElementById("smsBox").value;
+ const smsEl=document.getElementById("smsBox"); const txt = smsEl ? smsEl.value : "";
  if(!txt.trim()){ alert("문자를 붙여넣어 주세요"); return; }
  // 금액 추출 (가장 큰 숫자를 결제액으로 추정)
  const nums = (txt.match(/[\d,]+원/g) || []).map(s=>Number(s.replace(/[^\d]/g,"")));
@@ -775,6 +744,7 @@ function buildAcctSelect(){
  const opts=accounts.length?accounts.map(a=>`<option value="${a.id}">${bulkEsc(a.name)}</option>`).join(""):'<option value="">통장을 먼저 추가하세요</option>';
  ["inAcct","tFrom","tTo","rFrom","rTo","recurAcct","arFrom"].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=opts;});
  updateRecurringCategory();renderAssets();
+ const cat=document.getElementById("currentAssetTotal"); if(cat) cat.textContent=won(accounts.reduce((sum,a)=>sum+Number(a.bal||0),0));
 }
 
 /* ================= 내역 저장 ================= */
@@ -792,7 +762,7 @@ function addRecord(){
  save();
  document.getElementById("inAmt").value="";
  document.getElementById("inMemo").value="";
- document.getElementById("smsBox").value="";
+ const smsEl2=document.getElementById("smsBox"); if(smsEl2) smsEl2.value="";
  render(); alert("저장되었습니다");
 }
 
@@ -1153,17 +1123,6 @@ function changeMonth(delta){
   viewYM=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; render();
 }
 function getBudget(){return Number(localStorage.getItem("monthlyBudget")||0);}
-function getWeddingBudget(){return Number(localStorage.getItem("weddingBudget")||0);}
-function setBudget(){
-  const v=prompt("이번 달 예산을 입력하세요.",getBudget()?getBudget().toLocaleString():""); if(v===null)return;
-  const n=Number(String(v).replace(/[^\d]/g,"")); if(!n){alert("0보다 큰 금액을 입력해주세요.");return;}
-  localStorage.setItem("monthlyBudget",n);render();
-}
-function setWeddingBudget(){
-  const v=prompt("결혼 준비 총예산을 입력하세요.",getWeddingBudget()?getWeddingBudget().toLocaleString():""); if(v===null)return;
-  const n=Number(String(v).replace(/[^\d]/g,"")); if(!n){alert("0보다 큰 금액을 입력해주세요.");return;}
-  localStorage.setItem("weddingBudget",n);render();
-}
 function quickExpense(){setType("expense");showTab("input");document.getElementById("inDate").value=today();document.getElementById("inAmt").focus();}
 function quickIncome(){setType("income");showTab("input");document.getElementById("inDate").value=today();document.getElementById("inAmt").focus();}
 function renderDashboard(){
@@ -1171,15 +1130,14 @@ function renderDashboard(){
   const ins=records.filter(r=>r.type==="income"&&ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
   const outs=records.filter(r=>r.type==="expense"&&ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
   const bal=accounts.reduce((s,a)=>s+a.bal,0), budget=getBudget(), wb=getWeddingBudget();
-  const ws=records.filter(r=>r.type==="expense"&&r.cat==="결혼").reduce((s,r)=>s+r.amt,0);
+  const ws=records.filter(r=>r.type==="expense"&&r.cat==="기타").reduce((s,r)=>s+r.amt,0);
   document.getElementById("heroMonth").textContent=monthLabel(m);document.getElementById("heroBal").textContent=won(bal);
   document.getElementById("heroIn").textContent=won(ins);document.getElementById("heroOut").textContent=won(outs);
   document.getElementById("heroMonthBal").textContent=won(ins-outs);document.getElementById("monthTitle").textContent=monthLabel(m);
   const bt=document.getElementById("budgetText"),bf=document.getElementById("budgetFill"),bp=document.getElementById("budgetProgress");
   if(budget){const pct=Math.round(outs/budget*100);bt.textContent=`${won(outs)} / ${won(budget)} (${pct}%)`;bf.style.width=Math.min(pct,100)+"%";bp.classList.toggle("over",outs>budget);}
   else{bt.textContent="설정 안 함";bf.style.width="0%";bp.classList.remove("over");}
-  document.getElementById("wedBudget").textContent=wb?won(wb):"설정 안 함";document.getElementById("wedSpent").textContent=won(ws);
-  document.getElementById("wedFill").style.width=wb?Math.min(Math.round(ws/wb*100),100)+"%":"0%";
+
 }
 
 /* ================= 화면 전체 갱신 ================= */
@@ -1190,9 +1148,9 @@ function render(){
  const inSum  = records.filter(r=>r.type==="income" && ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
  const outSum = records.filter(r=>r.type==="expense"&& ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
  const total  = accounts.reduce((s,a)=>s+a.bal,0);
- document.getElementById("sumIn").textContent  = won(inSum);
- document.getElementById("sumOut").textContent = won(outSum);
- document.getElementById("sumBal").textContent = won(total);
+ const _sumIn=document.getElementById("sumIn"); if(_sumIn) _sumIn.textContent=won(inSum);
+ const _sumOut=document.getElementById("sumOut"); if(_sumOut) _sumOut.textContent=won(outSum);
+ const _sumBal=document.getElementById("sumBal"); if(_sumBal) _sumBal.textContent=won(total);
 
  // 최근 내역 (이체 제외, 클릭 시 수정)
  const rec = records.filter(r=>r.type!=="move").slice(-10).reverse();
@@ -1228,7 +1186,7 @@ function render(){
 
  // 이체 내역
  const moves = records.filter(r=>r.type==="move").slice(-8).reverse();
- document.getElementById("transferList").innerHTML = moves.length
+ const transferList=document.getElementById("transferList"); if(transferList) transferList.innerHTML = moves.length
    ? moves.map(r=>`
      <div class="row" style="cursor:default">
        <div><b>${r.from} → ${r.to}</b>
@@ -1246,7 +1204,7 @@ function render(){
  }
  renderAssets();
  // 반복이체 목록
- document.getElementById("recurList").innerHTML = recurring.length
+ const recurList=document.getElementById("recurList"); if(recurList) recurList.innerHTML = recurring.length
    ? recurring.map(r=>{
        const f=accounts.find(a=>a.id===r.from), t=accounts.find(a=>a.id===r.to);
        return `<div class="row" style="cursor:default">
@@ -1269,13 +1227,31 @@ function render(){
 
 /* ================= 탭 전환 ================= */
 function showTab(name){
- ["input","accounts","assets","transfer","report","settings"].forEach(t=>{
-   document.getElementById("tab-"+t).classList.toggle("hide", t!==name);
-   document.getElementById("btn-"+t).classList.toggle("on", t===name);
+ ["input","accounts","report","settings"].forEach(t=>{
+   const tab=document.getElementById("tab-"+t), btn=document.getElementById("btn-"+t);
+   if(tab) tab.classList.toggle("hide", t!==name);
+   if(btn) btn.classList.toggle("on", t===name);
  });
- // 분석 탭으로 들어올 때 그래프 그리기
- if(name==="report"){ drawDonut(); drawTrend(); }
+ if(name==="report") renderAnalysis();
  window.scrollTo(0,0);
+}
+
+
+function showInputSubtab(name,btn){
+ ["paste","manual","auto"].forEach(x=>{
+  const el=document.getElementById("input-sub-"+x);
+  if(el) el.classList.toggle("hide",x!==name);
+ });
+ document.querySelectorAll("#tab-input .subtabs button").forEach(x=>x.classList.remove("active"));
+ if(btn) btn.classList.add("active");
+}
+function showAssetPane(name,btn){
+ ["current","future"].forEach(x=>{
+  const el=document.getElementById("asset-pane-"+x);
+  if(el) el.classList.toggle("hide",x!==name);
+ });
+ document.querySelectorAll("#tab-accounts .subtabs button").forEach(x=>x.classList.remove("active"));
+ if(btn) btn.classList.add("active");
 }
 
 /* ================= 앱 최초 실행 (초기화) ================= */
