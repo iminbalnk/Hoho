@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>가계부</title>
+<title>가계쀼</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#141a17">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="우리집 가계부">
+<meta name="apple-mobile-web-app-title" content="가계쀼">
 <style>
  :root{
    --green:#1b5e42; --green-soft:#e5f2ec; --cream:#fbf9f4;
@@ -264,7 +264,7 @@ input::placeholder,textarea::placeholder{color:#7f8b91!important;}
 <body>
 
 <div class="head">
- <h2 id="title">가계부</h2>
+ <h2 id="title">가계쀼</h2>
 </div>
 
 <div id="dashboard">
@@ -305,19 +305,7 @@ input::placeholder,textarea::placeholder{color:#7f8b91!important;}
     <span class="pill">다중입력</span>
    </div>
    <p class="muted">은행·카드 앱 거래내역과 결제 문자를 구분하지 않고 그대로 한 번에 붙여넣어 주세요.</p>
-   <textarea id="bulkText" class="sms-area" placeholder="은행·카드 거래내역 또는 문자를 그대로 붙여넣기
-
-예)
-09.17 17:54:32 | 자동출금 카카오페이
--10,000원
-
-09.15 15:56:18 | 전자금융 조혜진
-+5,000원
-
-[카드 문자]
-[카드승인] 09/17 17:54
-GS25 1,200원
-잔액 123,456원"></textarea>
+   <textarea id="bulkText" class="sms-area" placeholder=""></textarea>
    <div class="row gap8 bulk-actions">
     <button class="btn secondary" id="bulkParseBtn" type="button">자동으로 읽기</button>
     <button class="btn" id="bulkSaveBtn" type="button" disabled>전체 저장</button>
@@ -512,7 +500,7 @@ GS25 1,200원
    <div id="cloudUser" class="hint" style="margin-top:10px"></div>
  </div>
  <div class="card">
-   <div class="section-kicker">HOUSEHOLD</div><h3> 우리집 가계부</h3>
+   <div class="section-kicker">HOUSEHOLD</div><h3> 가계쀼</h3>
    <button class="btn" onclick="cloudCreateHousehold()">새 가계부 만들기</button>
    <label style="margin-top:14px">공유할 가계부 ID</label>
    <input id="householdIdInput" placeholder="상대방에게 받은 가계부 ID">
@@ -542,6 +530,9 @@ GS25 1,200원
 let records   = JSON.parse(localStorage.getItem("records")   || "[]");
 let accounts  = JSON.parse(localStorage.getItem("accounts")  || "[]");
 let recurring = JSON.parse(localStorage.getItem("recurring") || "[]");
+if(!Array.isArray(records)) records=[];
+if(!Array.isArray(accounts)) accounts=[];
+if(!Array.isArray(recurring)) recurring=[];
 let curType = "expense", curCat = "";
 let editId = null;
 
@@ -549,6 +540,9 @@ const AUTO_ASSET_KEY = "assets";
 let assets = JSON.parse(localStorage.getItem("assets") || "[]");
 let assetRecurring = JSON.parse(localStorage.getItem("assetRecurring") || "[]");
 let assetReturns = JSON.parse(localStorage.getItem("assetReturns") || "[]");
+if(!Array.isArray(assets)) assets=[];
+if(!Array.isArray(assetRecurring)) assetRecurring=[];
+if(!Array.isArray(assetReturns)) assetReturns=[];
 let assetGoal = JSON.parse(localStorage.getItem("assetGoal") || 'null') || {target:0};
 let assetGoals = JSON.parse(localStorage.getItem("assetGoals") || "null") || {"2027":0,"2028":0,"2029":0};
 let monthlyBudgets = JSON.parse(localStorage.getItem("monthlyBudgets") || "null") || {};
@@ -561,7 +555,7 @@ function normalizeRecords(){
       if(a) acctId=a.id;
     }
     const amt=Number(r.amt!=null?r.amt:r.amount);
-    return {...r,id:r.id??(Date.now()+i),amt:Number.isFinite(amt)?Math.abs(amt):0,
+    return {...r,id:r.id??(Date.now()+i),date:r.date||today(),amt:Number.isFinite(amt)?Math.abs(amt):0,
       cat:r.cat||r.category||(r.type==="income"?"기타":"기타"),acctId,
       memo:r.memo||""};
   }).filter(r=>r.amt>0 && r.acctId!=null);
@@ -692,7 +686,7 @@ async function updateCloudUser(){
 }
 async function cloudCreateHousehold(){
  if(!sb && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
- const {data,error}=await sb.rpc("create_household",{p_name:"우리집 가계부"});
+ const {data,error}=await sb.rpc("create_household",{p_name:"가계쀼"});
  if(error){alert("가계부 만들기 실패: "+error.message+"\n\nSupabase SQL 설정을 먼저 완료해주세요.");return;}
  householdId=data; localStorage.setItem("householdId",householdId);
  document.getElementById("householdIdInput").value=householdId;
@@ -737,7 +731,7 @@ async function cloudPull(){
 }
 
 const won = n => Number(n).toLocaleString() + "원";
-const ym  = d => d.slice(0,7);
+const ym  = d => String(d || "").slice(0,7);
 const nowYM = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
 const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 
@@ -1480,8 +1474,7 @@ function renderDashboard(){
   const m=viewYM;
   const ins=records.filter(r=>r.type==="income"&&ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
   const outs=records.filter(r=>r.type==="expense"&&ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
-  const bal=accounts.reduce((s,a)=>s+a.bal,0), budget=getBudget(), wb=getWeddingBudget();
-  const ws=records.filter(r=>r.type==="expense"&&r.cat==="기타").reduce((s,r)=>s+r.amt,0);
+  const bal=accounts.reduce((s,a)=>s+a.bal,0), budget=getBudget();
   document.getElementById("heroMonth").textContent=monthLabel(m);document.getElementById("heroMonthBalLabel").textContent=`${monthLabel(m)} 잔액`;document.getElementById("heroBal").textContent=won(bal);
   document.getElementById("heroIn").textContent=won(ins);document.getElementById("heroOut").textContent=won(outs);
   document.getElementById("heroMonthBal").textContent=won(ins-outs);document.getElementById("monthTitle").textContent=monthLabel(m);document.getElementById("budgetLabel").textContent=`${monthLabel(m)} 예산`;
@@ -1494,6 +1487,7 @@ function renderDashboard(){
 /* ================= 화면 전체 갱신 ================= */
 function render(){
  const m = nowYM();
+ renderDashboard();
 
  // 상단 요약 3종
  const inSum  = records.filter(r=>r.type==="income" && ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
@@ -1723,6 +1717,7 @@ function renderAnalysis(){
 }
 
 (function init(){
+ try {
  // 클라우드 설정 복원
  const sbU=document.getElementById("sbUrl"), sbK=document.getElementById("sbKey");
  if(sbU) sbU.value=localStorage.getItem("sbUrl")||"https://fegoelbzlomrthtpbafb.supabase.co";
@@ -1739,12 +1734,16 @@ function renderAnalysis(){
  renderAssets();
  renderAnalysis();
  render();           // 첫 화면 그리기
+ } catch(e) {
+   console.error("APP INIT ERROR:", e);
+   try { showTab("input"); } catch(_) {}
+ }
 })();
 </script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=1').catch(() => {});
+    navigator.serviceWorker.register('./sw.js?v=3').catch(() => {});
   });
 }
 </script>

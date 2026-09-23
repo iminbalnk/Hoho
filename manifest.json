@@ -1,6 +1,6 @@
 {
-  "name": "우리집 가계부",
-  "short_name": "가계부",
+  "name": "가계쀼",
+  "short_name": "가계쀼",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#141a17",
