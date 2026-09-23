@@ -599,8 +599,21 @@ function normalizeRecords(){
   }).filter(r=>r.amt>0 && r.acctId!=null);
 }
 normalizeRecords();
-accounts=(accounts||[]).map(a=>({...a,owner:a.owner||"공동"}));
-assets=(assets||[]).map(a=>({...a,owner:a.owner||"공동"}));
+accounts=(accounts||[]).map((a,i)=>({
+  ...a,
+  id: a.id!=null ? Number(a.id) : Date.now()+i,
+  name: String(a.name||"통장"),
+  use: String(a.use||""),
+  bal: Number(a.bal)||0,
+  accountNo: String(a.accountNo||""),
+  owner: a.owner||"공동"
+}));
+assets=(assets||[]).map((a,i)=>({
+  ...a,
+  id: a.id!=null ? Number(a.id) : Date.now()+1000+i,
+  value: Number(a.value)||0,
+  owner: a.owner||"공동"
+}));
 
 const CATS = {
  income:  ["급여","용돈","이자","환급","기타"],
@@ -1070,7 +1083,7 @@ function buildAcctSelect(){
  const opts=accounts.length?accounts.map(a=>`<option value="${a.id}">${bulkEsc(a.name)}</option>`).join(""):'<option value="">통장을 먼저 추가하세요</option>';
  ["inAcct","tFrom","tTo","rFrom","rTo","recurAcct","arFrom"].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=opts;});
  updateRecurringCategory();renderAssets();
- const cat=document.getElementById("currentAssetTotal"); if(cat) cat.textContent=won(accounts.reduce((sum,a)=>sum+Number(a.bal||0),0)+assets.reduce((sum,a)=>sum+Number(a.value||0),0));
+ const cat=document.getElementById("currentAssetTotal"); if(cat) cat.textContent=won(accounts.reduce((sum,a)=>sum+Number(a.bal||0),0));
 }
 
 /* ================= 내역 저장 ================= */
@@ -1538,7 +1551,7 @@ function render(){
  // 상단 요약 3종
  const inSum  = records.filter(r=>r.type==="income" && ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
  const outSum = records.filter(r=>r.type==="expense"&& ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
- const total  = accounts.reduce((s,a)=>s+a.bal,0) + assets.reduce((s,a)=>s+Number(a.value||0),0);
+ const total  = accounts.reduce((s,a)=>s+Number(a.bal||0),0) + assets.reduce((s,a)=>s+Number(a.value||0),0);
  const _sumIn=document.getElementById("sumIn"); if(_sumIn) _sumIn.textContent=won(inSum);
  const _sumOut=document.getElementById("sumOut"); if(_sumOut) _sumOut.textContent=won(outSum);
  const _sumBal=document.getElementById("sumBal"); if(_sumBal) _sumBal.textContent=won(total);
@@ -1634,7 +1647,22 @@ function showTab(name){
    if(tab) tab.classList.toggle("hide", t!==name);
    if(btn) btn.classList.toggle("on", t===name);
  });
- if(name==="report") renderAnalysis();
+ try{
+   if(name==="accounts"){
+     // 통장 탭을 열 때마다 최신 계좌 데이터를 다시 그려요.
+     buildAcctSelect();
+     renderAssets();
+     render();
+   }else if(name==="report"){
+     renderAnalysis();
+   }
+ }catch(e){
+   console.error("TAB RENDER ERROR:",e);
+   const list=document.getElementById("acctList");
+   if(name==="accounts" && list){
+     list.innerHTML='<div class="empty">통장 정보를 불러오는 중 문제가 생겼어요. 새로고침 후 다시 확인해주세요.</div>';
+   }
+ }
  window.scrollTo(0,0);
 }
 
