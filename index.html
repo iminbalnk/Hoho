@@ -934,7 +934,7 @@ function bulkRenderPreview(){
   box.innerHTML = bulkParsed.map((r,i) => {
     const cats = CATS[r.type] || CATS.expense;
     return `<div class="bulk-row bulk-row-edit">
-      <div class="bulk-date">${bulkEsc(r.date.slice(5))}<br>${bulkEsc(r.time)}</div>
+      <div class="bulk-date">${bulkEsc(r.date.slice(5))}${bulkEsc(r.time)}</div>
       <div class="bulk-desc">
         <input value="${attrEscape(r.memo)}" onchange="bulkParsed[${i}].memo=this.value">
         <select onchange="bulkParsed[${i}].cat=this.value">
