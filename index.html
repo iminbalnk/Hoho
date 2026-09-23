@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>가계부</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#141a17">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="우리집 가계부">
 <style>
  :root{
    --green:#1b5e42; --green-soft:#e5f2ec; --cream:#fbf9f4;
@@ -969,7 +974,7 @@ function renderAccountSummary(){
 
 /* ================= 계좌/카드별 자동 집계 ================= */
 function getAccountSummaryForMonth(){
-  const ym = (typeof nowYM !== 'undefined') ? nowYM : bulkLocalToday().slice(0,7);
+  const ym = (typeof nowYM === 'function') ? nowYM() : bulkLocalToday().slice(0,7);
   const map = {};
   (typeof records !== 'undefined' ? records : []).forEach(r => {
     if(String(r.date || '').slice(0,7) !== ym) return;
@@ -1735,6 +1740,13 @@ function renderAnalysis(){
  renderAnalysis();
  render();           // 첫 화면 그리기
 })();
+</script>
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js?v=1').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
