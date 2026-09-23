@@ -22,7 +22,38 @@
    --plus:#4db892; --minus:#e88a72; --move:#4db892;
    --shadow:0 4px 16px rgba(0,0,0,.3);
  }
- *{box-sizing:border-box;margin:0;padding:0;font-family:'산굼부리체','Apple SD Gothic Neo','Segoe UI',sans-serif;}
+@font-face{
+font-family:'MaruBuri';
+src:url('./fonts/MaruBuri-Regular.woff2') format('woff2');
+}
+ 
+@font-face{
+font-family:'MaruBuriBold';
+src:url('./fonts/MaruBuri-Bold.woff2') format('woff2');
+}
+ 
+*{
+box-sizing:border-box;
+margin:0;
+padding:0;
+}
+ 
+body,
+input,
+select,
+textarea,
+button{
+font-family:'MaruBuri','Apple SD Gothic Neo',sans-serif;
+}
+ 
+h2,
+h3,
+.hero .balance,
+.acct-name,
+.acct-bal,
+.month-title{
+font-family:'MaruBuriBold','MaruBuri',sans-serif;
+}
  body{background:var(--cream);color:var(--text);padding:16px;padding-bottom:90px;max-width:520px;margin:0 auto;transition:background .2s;}
  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
  h2{color:var(--green);font-size:20px;}
@@ -247,7 +278,14 @@ input::placeholder,textarea::placeholder{color:#7f8b91!important;}
 .navbar button{color:#8f9ba1!important;}
 .navbar button.on,.nav button.active{color:#b7d2c2!important;background:#26352f!important;}
 .month-nav button{background:#26352f!important;color:#b7d2c2!important;}
-.hero{background:#202b27!important;border:1px solid #35463f!important;box-shadow:none!important;}
+.hero{background:linear-gradient(
+135deg,
+#8ba894 0%,
+#6f8f7a 100%
+)!important;
+border:1px solid #35463f!important;
+box-shadow:none!important;
+}
 .hero-stat{background:#2a3531!important;}
 .wedding-line,.section-note,.hint{color:#aab4b9!important;}
 .analysis-total{border-color:#343c42!important;}
@@ -751,7 +789,13 @@ function bulkEsc(s){
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[ch]));
 }
-
+function attrEscape(v){
+return String(v ?? '')
+.replace(/&/g,'&amp;')
+.replace(/"/g,'&quot;')
+.replace(/</g,'&lt;')
+.replace(/>/g,'&gt;');
+}
 
 /* ================= 자동분류 기억 기능 ================= */
 const AUTO_CAT_KEY = 'autoCategoryRules';
@@ -892,7 +936,7 @@ function bulkRenderPreview(){
     return `<div class="bulk-row bulk-row-edit">
       <div class="bulk-date">${bulkEsc(r.date.slice(5))}<br>${bulkEsc(r.time)}</div>
       <div class="bulk-desc">
-        <input value="${bulkEsc(r.memo)}" onchange="bulkParsed[${i}].memo=this.value">
+        <input value="${attrEscape(r.memo)}" onchange="bulkParsed[${i}].memo=this.value">
         <select onchange="bulkParsed[${i}].cat=this.value">
           ${cats.map(c=>`<option value="${bulkEsc(c)}" ${c===r.cat?'selected':''}>${bulkEsc(c)}</option>`).join('')}
         </select>
@@ -922,7 +966,8 @@ function bulkSaveAll(){
     return;
   }
 
-  const account = typeof inAcct !== 'undefined' ? inAcct : '';
+const account = document.getElementById("inAcct")?.value;
+`
   if(!account){
     alert('먼저 통장/카드를 하나 선택해 주세요.');
     return;
@@ -931,9 +976,11 @@ function bulkSaveAll(){
   bulkParsed = bulkParsed.map(r => ({...r, acctId:Number(account), amt:Number(r.amt)}));
   records.push(...bulkParsed);
   bulkParsed.forEach(r => {
-    if(r.memo && r.category) setAutoCategoryRule(r.memo, r.category);
+ if(r.memo && r.cat){
+setAutoCategoryRule(r.memo, r.cat);
+}
   });
-  if(typeof saveAll === 'function') saveAll();
+ save();
 
   const count = bulkParsed.length;
   bulkParsed = [];
@@ -983,7 +1030,6 @@ function getAccountSummaryForMonth(){
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('bulkParseBtn')?.addEventListener('click', bulkParse);
   document.getElementById('bulkSaveBtn')?.addEventListener('click', bulkSaveAll);
-  setTimeout(renderAccountSummary, 0);
 });
 
 /* ================= 문자 붙여넣기 파싱 ================= */
@@ -1566,8 +1612,15 @@ function render(){
 
  // 분석 탭이 열려 있을 때만 그래프 갱신
  if(!document.getElementById("tab-report").classList.contains("hide")){
-   drawDonut();
-   drawTrend();
+if(document.getElementById("donut")){
+drawDonut();
+}
+if(
+document.getElementById("reportCat") &&
+document.getElementById("trendChart")
+){
+drawTrend();
+}
  }
  renderAnalysis();
 }
