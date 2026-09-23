@@ -17,7 +17,7 @@
    --plus:#4db892; --minus:#e88a72; --move:#4db892;
    --shadow:0 4px 16px rgba(0,0,0,.3);
  }
- *{box-sizing:border-box;margin:0;padding:0;font-family:'Apple SD Gothic Neo','Segoe UI',sans-serif;}
+ *{box-sizing:border-box;margin:0;padding:0;font-family:'산굼부리체','Apple SD Gothic Neo','Segoe UI',sans-serif;}
  body{background:var(--cream);color:var(--text);padding:16px;padding-bottom:90px;max-width:520px;margin:0 auto;transition:background .2s;}
  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
  h2{color:var(--green);font-size:20px;}
@@ -49,6 +49,12 @@
  .acct-use{font-size:13px;color:var(--sub);margin-top:2px;}
  .acct-bal{font-size:18px;font-weight:700;color:var(--green);margin-top:8px;}
  .del{background:none;border:none;color:var(--minus);font-size:13px;cursor:pointer;}
+ .account-no{font-size:11px;color:var(--sub);margin-top:4px;display:flex;align-items:center;gap:6px;letter-spacing:.1px;}
+ .copy-mini{border:1px solid var(--line);background:transparent;color:var(--sub);font-size:10px;padding:2px 6px;border-radius:6px;cursor:pointer;}
+ .return-tabs{display:flex;gap:8px;background:var(--soft);border-radius:12px;padding:4px;margin-bottom:12px;}
+ .return-tabs button{flex:1;border:0;background:transparent;color:var(--sub);padding:9px 6px;border-radius:9px;font-weight:700;}
+ .return-tabs button.active{background:var(--card);color:var(--text);}
+
  .sum-box{display:flex;gap:10px;margin-bottom:16px;}
  .sum-item{flex:1;background:var(--card);border-radius:16px;padding:14px;text-align:center;box-shadow:var(--shadow);}
  .sum-item .lbl{font-size:12px;color:var(--sub);}
@@ -245,6 +251,9 @@ input::placeholder,textarea::placeholder{color:#7f8b91!important;}
 .section-kicker{color:#a9c0b4!important;}
 .del{color:#e5a09a!important;}
 
+  .goal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .goal-grid>div{min-width:0}
+  @media(max-width:640px){.goal-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -255,12 +264,12 @@ input::placeholder,textarea::placeholder{color:#7f8b91!important;}
 
 <div id="dashboard">
   <div class="hero">
-    <div class="eyebrow" id="heroMonth">이번 달</div>
+    <div class="eyebrow" id="heroMonth">26.09</div>
     <div class="balance" id="heroBal">0원</div>
     <div class="hero-sub">
       <div class="hero-stat"><div class="slabel">수입</div><div class="sval" id="heroIn">0원</div></div>
       <div class="hero-stat"><div class="slabel">지출</div><div class="sval" id="heroOut">0원</div></div>
-      <div class="hero-stat"><div class="slabel">이번 달 잔액</div><div class="sval" id="heroMonthBal">0원</div></div>
+      <div class="hero-stat"><div class="slabel" id="heroMonthBalLabel">26.09 잔액</div><div class="sval" id="heroMonthBal">0원</div></div>
     </div>
   </div>
   <div class="quick">
@@ -271,7 +280,7 @@ input::placeholder,textarea::placeholder{color:#7f8b91!important;}
     <div class="month-nav">
       <button onclick="changeMonth(-1)">‹</button><div class="month-title" id="monthTitle"></div><button onclick="changeMonth(1)">›</button>
     </div>
-    <div class="budget-head"><b>이번 달 예산</b><span class="budget-val" id="budgetText">설정 안 함</span></div>
+    <div class="budget-head"><b id="budgetLabel">예산</b><span class="budget-val" id="budgetText">설정 안 함</span></div>
     <div class="progress" id="budgetProgress"><div id="budgetFill" style="width:0%"></div></div>
     <button class="btn sub small" style="margin-top:10px" onclick="setBudget()">예산 설정</button>
   </div>
@@ -361,7 +370,7 @@ GS25 1,200원
   </div>
 
   <div class="card">
-   <div class="section-title"><div><div class="section-kicker">ASSET SAVING</div><h3>미래자산 자동납입</h3></div><span class="pill">연금·주식</span></div>
+   <div class="section-title"><div><div class="section-kicker">ASSET SAVING</div><h3>미래자산 자동납입</h3></div><span class="pill">적금·연금·주식</span></div>
    <label>출금 통장</label><select id="arFrom"></select>
    <label>받는 자산</label><select id="arAsset"></select>
    <label>금액</label><input type="number" id="arAmt" min="1" placeholder="예: 300000">
@@ -375,6 +384,9 @@ GS25 1,200원
 
 <!-- ===== 탭2: 통장 ===== -->
 <div id="tab-accounts" class="hide">
+ <div class="card" style="margin-bottom:12px">
+  <div class="section-title"><h3>통장 · 카드 현황</h3></div>
+ </div>
  <div class="subtabs">
   <button class="active" onclick="showAssetPane('current',this)"> 현재자산</button>
   <button onclick="showAssetPane('future',this)"> 미래자산</button>
@@ -386,27 +398,42 @@ GS25 1,200원
    <label>이름</label><input type="text" id="acName" placeholder="예: 급여통장">
    <label>용도</label><input type="text" id="acUse" placeholder="예: 월급 및 고정지출">
    <label>현재 잔액</label><input type="number" id="acBal" placeholder="0">
+   <label>계좌번호 <span class="hint">선택</span></label><input type="text" id="acNo" inputmode="numeric" placeholder="예: 1234-5678-9012">
+   <label>관리주체</label><select id="acOwner"><option value="공동">공동</option><option value="민경">민경</option><option value="호재">호재</option></select>
    <button class="btn" onclick="addAccount()">추가하기</button>
   </div>
   <div class="card">
-   <div class="section-title"><h3>내 통장 · 카드</h3><b id="currentAssetTotal">0원</b></div>
+   <div class="section-title"><h3>통장 · 카드 현황</h3><b id="currentAssetTotal">0원</b></div>
    <div id="acctList"></div>
   </div>
  </div>
 
  <div id="asset-pane-future" class="subpane hide">
   <div class="card">
-   <div class="section-title"><div><div class="section-kicker">FUTURE ASSET</div><h3>미래자산 관리</h3></div><span class="pill">연금저축 · 주식</span></div>
-   <p class="muted">장기적으로 모아가는 자산을 따로 관리해요.</p>
-   <label>자산 종류</label><select id="assetType"><option value="pension">연금저축</option><option value="stock">주식</option></select>
-   <label>자산 이름</label><input id="assetName" placeholder="예: 연금저축펀드 / 삼성전자">
-   <label>현재 평가금액</label><input type="number" id="assetValue" min="0" placeholder="숫자만 입력">
-   <label>메모</label><input id="assetMemo" placeholder="예: 보유 20주">
+   <div class="section-title"><div><div class="section-kicker">FUTURE ASSET</div><h3>적금 · 연금저축 · 주식</h3></div><span class="pill">계좌형 자산</span></div>
+   <p class="muted">적금과 연금저축은 통장처럼 잔액과 매월 자동납입으로 관리하고, 주식은 종목별 보유액이 아니라 주식계좌 전체 평가금액으로 관리해요.</p>
+   <label>자산 종류</label><select id="assetType"><option value="savings">적금통장</option><option value="pension">연금저축</option><option value="stock">주식계좌</option></select>
+   <label>자산 이름</label><input id="assetName" placeholder="예: 주택청약 적금 / 연금저축 / 주식계좌">
+   <label>현재 평가금액</label><input type="number" id="assetValue" min="0" placeholder="현재 잔액 또는 평가금액">
+   <label>계좌번호 <span class="hint">선택</span></label><input id="assetNo" inputmode="numeric" placeholder="예: 1234-5678-9012">
+   <label>관리주체</label><select id="assetOwner"><option value="공동">공동</option><option value="민경">민경</option><option value="호재">호재</option></select>
+   <label>메모</label><input id="assetMemo" placeholder="예: 월 30만원 자동납입">
    <button class="btn" onclick="addAsset()">자산 추가</button>
   </div>
   <div class="card">
-   <div class="section-title"><h3>내 미래자산</h3><b id="assetTotal">0원</b></div>
-   <div id="assetList"></div>
+   <div class="return-tabs"><button class="active" onclick="showReturnPane('balance',this)">보유자산</button><button onclick="showReturnPane('returns',this)">월별 수익</button></div>
+   <div id="return-pane-balance">
+    <div class="section-title"><h3>내 미래자산</h3><b id="assetTotal">0원</b></div>
+    <div id="assetList"></div>
+   </div>
+   <div id="return-pane-returns" class="hide">
+    <label>월</label><input type="month" id="returnMonth">
+    <label>계좌</label><select id="returnAsset"></select>
+    <label>월 수익 / 손익</label><input type="number" id="returnAmount" placeholder="수익은 +, 손실은 -">
+    <label>메모</label><input id="returnMemo" placeholder="예: 9월 평가손익">
+    <button class="btn" onclick="addAssetReturn()">월별 수익 기록</button>
+    <div id="assetReturnList" style="margin-top:14px"></div>
+   </div>
   </div>
  </div>
 </div>
@@ -414,30 +441,31 @@ GS25 1,200원
 <!-- ===== 탭3: 분석 ===== -->
 <div id="tab-report" class="hide">
  <div class="card">
-  <div class="section-title"><div><div class="section-kicker">OVERVIEW</div><h3>전체 자산 분산</h3></div></div>
-  <div id="assetOverview" class="analysis-grid"></div>
- </div>
- <div class="card">
   <div class="section-title"><div><div class="section-kicker">SPENDING</div><h3>전체 쓰임새 분산</h3></div></div>
   <div id="categoryOverview" class="analysis-grid"></div>
  </div>
  <div class="card">
   <div class="section-title"><div><div class="section-kicker">CATEGORY</div><h3>카테고리 관리</h3></div></div>
-  <p class="hint">원하는 지출·수입 카테고리를 직접 추가할 수 있어요.</p>
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-   <select id="newCategoryType" style="width:auto;min-width:90px"><option value="expense">지출</option><option value="income">수입</option></select>
-   <input id="newCategoryName" type="text" maxlength="20" placeholder="예: 반려동물" style="flex:1;min-width:150px">
-   <button class="btn" onclick="addCustomCategory()">+ 카테고리 추가</button>
-  </div>
   <div id="categoryManager"></div>
  </div>
  <div class="card">
-  <div class="section-title"><div><div class="section-kicker">3 YEAR GOAL</div><h3>향후 3년 목표자산</h3></div></div>
-  <p class="hint">3년 뒤 만들고 싶은 총자산을 설정하면 현재 자산 기준으로 진행률과 필요한 월 저축액을 보여드려요.</p>
-  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-   <input id="assetGoalInput" type="number" min="0" step="100000" placeholder="예: 300000000" style="flex:1;min-width:180px">
-   <button class="btn" onclick="saveAssetGoal()">목표 저장</button>
+  <div class="section-title"><div><div class="section-kicker">BUDGET</div><h3>월별 예산</h3></div></div>
+  <div class="month-nav"><button class="btn sub" onclick="changeAnalysisMonth(-1)">‹</button><b id="budgetMonth"></b><button class="btn sub" onclick="changeAnalysisMonth(1)">›</button></div>
+  <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+   <input id="analysisBudgetInput" type="number" min="0" step="10000" placeholder="예산 금액" style="flex:1">
+   <button class="btn" onclick="saveAnalysisBudget()">예산 저장</button>
   </div>
+  <div id="analysisBudgetOverview" style="margin-top:14px"></div>
+ </div>
+ <div class="card">
+  <div class="section-title"><div><div class="section-kicker">GOALS</div><h3>연도별 목표자산</h3></div></div>
+  <p class="hint">각 연도 1월 1일 기준으로 목표 총자산을 따로 설정할 수 있어요.</p>
+  <div class="goal-grid">
+   <div><label>2027.01.01 목표</label><input id="assetGoal2027" type="number" min="0" step="100000" placeholder="예: 100000000"></div>
+   <div><label>2028.01.01 목표</label><input id="assetGoal2028" type="number" min="0" step="100000" placeholder="예: 180000000"></div>
+   <div><label>2029.01.01 목표</label><input id="assetGoal2029" type="number" min="0" step="100000" placeholder="예: 250000000"></div>
+  </div>
+  <button class="btn" style="margin-top:10px" onclick="saveAssetGoals()">목표 저장</button>
   <div id="assetGoalOverview" style="margin-top:14px"></div>
  </div>
  <div class="card">
@@ -446,8 +474,12 @@ GS25 1,200원
   <div id="monthlyOverview"></div>
  </div>
  <div class="card">
-  <div class="section-title"><div><div class="section-kicker">CATEGORY</div><h3>이번 달 카테고리</h3></div></div>
+  <div class="section-title"><div><div class="section-kicker">CATEGORY</div><h3>월별 지출</h3></div></div>
   <div id="categoryMonthly"></div>
+ </div>
+ <div class="card">
+  <div class="section-title"><div><div class="section-kicker">OVERVIEW</div><h3>전체 자산 분산</h3></div></div>
+  <div id="assetOverview" class="analysis-grid"></div>
  </div>
 </div>
 <div id="tab-settings" class="hide">
@@ -511,7 +543,10 @@ let editId = null;
 const AUTO_ASSET_KEY = "assets";
 let assets = JSON.parse(localStorage.getItem("assets") || "[]");
 let assetRecurring = JSON.parse(localStorage.getItem("assetRecurring") || "[]");
+let assetReturns = JSON.parse(localStorage.getItem("assetReturns") || "[]");
 let assetGoal = JSON.parse(localStorage.getItem("assetGoal") || 'null') || {target:0};
+let assetGoals = JSON.parse(localStorage.getItem("assetGoals") || "null") || {"2027":0,"2028":0,"2029":0};
+let monthlyBudgets = JSON.parse(localStorage.getItem("monthlyBudgets") || "null") || {};
 
 function normalizeRecords(){
   records=(records||[]).map((r,i)=>{
@@ -527,7 +562,8 @@ function normalizeRecords(){
   }).filter(r=>r.amt>0 && r.acctId!=null);
 }
 normalizeRecords();
-
+accounts=(accounts||[]).map(a=>({...a,owner:a.owner||"공동"}));
+assets=(assets||[]).map(a=>({...a,owner:a.owner||"공동"}));
 
 const CATS = {
  income:  ["급여","용돈","이자","환급","기타"],
@@ -565,7 +601,10 @@ function localSaveOnly(){
  localStorage.setItem("recurring", JSON.stringify(recurring));
  localStorage.setItem("assets", JSON.stringify(assets));
  localStorage.setItem("assetRecurring", JSON.stringify(assetRecurring));
+ localStorage.setItem("assetReturns", JSON.stringify(assetReturns));
  localStorage.setItem("assetGoal", JSON.stringify(assetGoal));
+ localStorage.setItem("assetGoals", JSON.stringify(assetGoals));
+ localStorage.setItem("monthlyBudgets", JSON.stringify(monthlyBudgets));
 }
 function save(){
  localSaveOnly();
@@ -665,7 +704,7 @@ async function cloudJoinHousehold(){
  document.getElementById("householdInfo").textContent="공유 가계부에 연결됐어요.";
  await cloudPull();
 }
-function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,assetGoal,autoCategoryRules:getAutoCategoryRules()};}
+function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules()};}
 async function cloudPush(){
  if(cloudSyncing||cloudLoading||!householdId)return;
  if(!sb && !setCloudClient())return;
@@ -685,7 +724,7 @@ async function cloudPull(){
  if(error){alert("클라우드 불러오기 실패: "+error.message);return;}
  if(!data?.data){alert("아직 클라우드 데이터가 없어요. 현재 기기의 데이터를 먼저 저장할까요?");await cloudPush();return;}
  const d=data.data; cloudLoading=true;
- records=d.records||[];accounts=d.accounts||[];recurring=d.recurring||[];assets=d.assets||[];assetRecurring=d.assetRecurring||[];assetGoal=d.assetGoal||{target:0}; localStorage.setItem("assetGoal",JSON.stringify(assetGoal));
+ records=d.records||[];accounts=d.accounts||[];recurring=d.recurring||[];assets=d.assets||[];assetRecurring=d.assetRecurring||[];assetReturns=d.assetReturns||[];assetGoal=d.assetGoal||{target:0};assetGoals=d.assetGoals||{"2027":0,"2028":0,"2029":0};monthlyBudgets=d.monthlyBudgets||{}; localStorage.setItem("assetReturns",JSON.stringify(assetReturns)); localStorage.setItem("assetGoal",JSON.stringify(assetGoal)); localStorage.setItem("assetGoals",JSON.stringify(assetGoals)); localStorage.setItem("monthlyBudgets",JSON.stringify(monthlyBudgets));
  if(d.autoCategoryRules)localStorage.setItem(AUTO_CAT_KEY,JSON.stringify(d.autoCategoryRules));
  localSaveOnly(); cloudLoading=false;
  buildChips();buildAcctSelect();renderAssets();render();
@@ -986,7 +1025,7 @@ function buildAcctSelect(){
  const opts=accounts.length?accounts.map(a=>`<option value="${a.id}">${bulkEsc(a.name)}</option>`).join(""):'<option value="">통장을 먼저 추가하세요</option>';
  ["inAcct","tFrom","tTo","rFrom","rTo","recurAcct","arFrom"].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=opts;});
  updateRecurringCategory();renderAssets();
- const cat=document.getElementById("currentAssetTotal"); if(cat) cat.textContent=won(accounts.reduce((sum,a)=>sum+Number(a.bal||0),0));
+ const cat=document.getElementById("currentAssetTotal"); if(cat) cat.textContent=won(accounts.reduce((sum,a)=>sum+Number(a.bal||0),0)+assets.reduce((sum,a)=>sum+Number(a.value||0),0));
 }
 
 /* ================= 내역 저장 ================= */
@@ -1059,10 +1098,12 @@ function addAccount(){
  const name=document.getElementById("acName").value.trim();
  const use=document.getElementById("acUse").value.trim();
  const bal=Number(document.getElementById("acBal").value)||0;
+ const accountNo=document.getElementById("acNo")?.value.trim()||"";
+ const owner=document.getElementById("acOwner")?.value||"공동";
  if(!name){alert("이름을 입력하세요");return;}
- accounts.push({id:Date.now(),name,use,bal});
+ accounts.push({id:Date.now(),name,use,bal,accountNo,owner});
  save();
- document.getElementById("acName").value="";document.getElementById("acUse").value="";document.getElementById("acBal").value="";
+ document.getElementById("acName").value="";document.getElementById("acUse").value="";document.getElementById("acBal").value="";if(document.getElementById("acNo"))document.getElementById("acNo").value="";if(document.getElementById("acOwner"))document.getElementById("acOwner").value="공동";
  buildAcctSelect(); render();
 }
 function editAccount(id){
@@ -1074,6 +1115,8 @@ function editAccount(id){
   <label>이름</label><input id="eaName" value="${bulkEsc(a.name)}">
   <label>용도</label><input id="eaUse" value="${bulkEsc(a.use||"")}">
   <label>현재 잔액</label><input type="number" id="eaBal" value="${Number(a.bal)||0}">
+  <label>계좌번호 <span class="hint">선택</span></label><input id="eaNo" value="${bulkEsc(a.accountNo||"")}" inputmode="numeric">
+  <label>관리주체</label><select id="eaOwner"><option value="공동" ${(a.owner||"공동")==="공동"?"selected":""}>공동</option><option value="민경" ${(a.owner||"")==="민경"?"selected":""}>민경</option><option value="호재" ${(a.owner||"")==="호재"?"selected":""}>호재</option></select>
   <button class="btn" onclick="saveAccountEdit(${id})">수정 저장</button>
   <button class="btn sub" onclick="document.getElementById('accountEditModal').remove()">취소</button>
  </div>`;
@@ -1085,7 +1128,7 @@ function saveAccountEdit(id){
  const use=document.getElementById("eaUse").value.trim();
  const bal=Number(document.getElementById("eaBal").value);
  if(!name||!Number.isFinite(bal)){alert("입력값을 확인하세요");return;}
- a.name=name;a.use=use;a.bal=bal;save();
+ a.name=name;a.use=use;a.bal=bal;a.accountNo=document.getElementById("eaNo")?.value.trim()||"";a.owner=document.getElementById("eaOwner")?.value||"공동";save();
  document.getElementById("accountEditModal").remove();buildAcctSelect();render();
 }
 function delAccount(id){
@@ -1154,18 +1197,20 @@ function runRecurring(){
 }
 /* ================= 자산관리 ================= */
 function addAsset(){
- const type=document.getElementById("assetType").value,name=document.getElementById("assetName").value.trim(),value=Number(document.getElementById("assetValue").value),memo=document.getElementById("assetMemo").value.trim();
+ const type=document.getElementById("assetType").value,name=document.getElementById("assetName").value.trim(),value=Number(document.getElementById("assetValue").value),accountNo=document.getElementById("assetNo")?.value.trim()||"",owner=document.getElementById("assetOwner")?.value||"공동",memo=document.getElementById("assetMemo").value.trim();
  if(!name||!Number.isFinite(value)||value<0){alert("입력값을 확인하세요");return;}
- assets.push({id:Date.now()+Math.random(),type,name,value,memo});save();renderAssets();
- document.getElementById("assetName").value="";document.getElementById("assetValue").value="";document.getElementById("assetMemo").value="";
+ assets.push({id:Date.now()+Math.random(),type,name,value,accountNo,owner,memo});save();renderAssets();
+ document.getElementById("assetName").value="";document.getElementById("assetValue").value="";if(document.getElementById("assetNo"))document.getElementById("assetNo").value="";if(document.getElementById("assetOwner"))document.getElementById("assetOwner").value="공동";document.getElementById("assetMemo").value="";
 }
 function editAsset(id){
  const a=assets.find(x=>x.id===id);if(!a)return;
  const m=document.createElement("div");m.className="modal-bg";m.id="assetEditModal";
  m.innerHTML=`<div class="modal"><h3>자산 수정</h3>
- <label>자산 종류</label><select id="edAt"><option value="pension" ${a.type==="pension"?"selected":""}>연금저축</option><option value="stock" ${a.type==="stock"?"selected":""}>주식</option></select>
+ <label>자산 종류</label><select id="edAt"><option value="savings" ${a.type==="savings"?"selected":""}>적금통장</option><option value="pension" ${a.type==="pension"?"selected":""}>연금저축</option><option value="stock" ${a.type==="stock"?"selected":""}>주식계좌</option></select>
  <label>자산 이름</label><input id="edAn" value="${bulkEsc(a.name)}">
  <label>현재 평가금액</label><input type="number" id="edAv" value="${Number(a.value)||0}">
+ <label>계좌번호 <span class="hint">선택</span></label><input id="edAno" value="${bulkEsc(a.accountNo||"")}" inputmode="numeric">
+ <label>관리주체</label><select id="edAo"><option value="공동" ${(a.owner||"공동")==="공동"?"selected":""}>공동</option><option value="민경" ${(a.owner||"")==="민경"?"selected":""}>민경</option><option value="호재" ${(a.owner||"")==="호재"?"selected":""}>호재</option></select>
  <label>메모</label><input id="edAm" value="${bulkEsc(a.memo||"")}">
  <button class="btn" onclick="saveAssetEdit(${id})">수정 저장</button><button class="btn" style="background:var(--minus)" onclick="deleteAsset(${id})">삭제</button><button class="btn sub" onclick="document.getElementById('assetEditModal').remove()">취소</button></div>`;
  document.body.appendChild(m);
@@ -1173,7 +1218,7 @@ function editAsset(id){
 function saveAssetEdit(id){
  const a=assets.find(x=>x.id===id);if(!a)return;const value=Number(document.getElementById("edAv").value),name=document.getElementById("edAn").value.trim();
  if(!name||!Number.isFinite(value)||value<0){alert("입력값을 확인하세요");return;}
- a.type=document.getElementById("edAt").value;a.name=name;a.value=value;a.memo=document.getElementById("edAm").value.trim();save();document.getElementById("assetEditModal").remove();renderAssets();
+ a.type=document.getElementById("edAt").value;a.name=name;a.value=value;a.accountNo=document.getElementById("edAno")?.value.trim()||"";a.owner=document.getElementById("edAo")?.value||"공동";a.memo=document.getElementById("edAm").value.trim();save();document.getElementById("assetEditModal").remove();renderAssets();
 }
 function deleteAsset(id){
  if(!confirm("이 자산을 삭제할까요?"))return;
@@ -1196,16 +1241,56 @@ function runAssetRecurring(){
   r.lastRun=key;
  });save();
 }
+function showReturnPane(pane,btn){
+ document.getElementById("return-pane-balance")?.classList.toggle("hide",pane!=="balance");
+ document.getElementById("return-pane-returns")?.classList.toggle("hide",pane!=="returns");
+ document.querySelectorAll(".return-tabs button").forEach(b=>b.classList.remove("active"));
+ btn?.classList.add("active");
+ if(pane==="returns") renderAssetReturns();
+}
+function copyAccountNo(no){
+ const text=String(no||""); if(!text)return;
+ if(navigator.clipboard?.writeText){navigator.clipboard.writeText(text).then(()=>alert("계좌번호를 복사했어요." )).catch(()=>fallbackCopy(text));}
+ else fallbackCopy(text);
+}
+function fallbackCopy(text){
+ const ta=document.createElement("textarea");ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand("copy");ta.remove();alert("계좌번호를 복사했어요.");
+}
+function addAssetReturn(){
+ const month=document.getElementById("returnMonth")?.value||nowYM(),assetId=Number(document.getElementById("returnAsset")?.value),amount=Number(document.getElementById("returnAmount")?.value),memo=document.getElementById("returnMemo")?.value.trim()||"";
+ if(!assetId||!Number.isFinite(amount)||amount===0){alert("계좌와 수익/손실 금액을 확인하세요");return;}
+ const asset=assets.find(a=>a.id===assetId); if(!asset)return;
+ asset.value=(Number(asset.value)||0)+amount;
+ assetReturns.push({id:Date.now()+Math.random(),month,assetId,amount,memo});
+ save(); renderAssets(); renderAnalysis();
+ document.getElementById("returnAmount").value="";document.getElementById("returnMemo").value="";
+ alert("월별 수익을 기록했어요.");
+}
+function deleteAssetReturn(id){
+ const r=assetReturns.find(x=>x.id===id); if(!r)return;
+ if(!confirm("이 월별 수익 기록을 삭제할까요?"))return;
+ const a=assets.find(x=>x.id===r.assetId); if(a)a.value=(Number(a.value)||0)-Number(r.amount||0);
+ assetReturns=assetReturns.filter(x=>x.id!==id); save(); renderAssets(); renderAnalysis();
+}
+function renderAssetReturns(){
+ const sel=document.getElementById("returnAsset");
+ if(sel)sel.innerHTML=assets.length?assets.map(a=>`<option value="${a.id}">${a.type==="savings"?"적금통장":a.type==="pension"?"연금저축":"주식계좌"} · ${bulkEsc(a.name)}</option>`).join("") :`<option value="">계좌를 먼저 추가하세요</option>`;
+ const mo=document.getElementById("returnMonth"); if(mo&&!mo.value)mo.value=nowYM();
+ const list=document.getElementById("assetReturnList"); if(!list)return;
+ const rows=[...assetReturns].sort((a,b)=>String(b.month).localeCompare(String(a.month)));
+ list.innerHTML=rows.length?rows.map(r=>{const a=assets.find(x=>x.id===r.assetId);return `<div class="row"><div><b>${r.month} · ${a?bulkEsc(a.name):"삭제된 계좌"}</b><div class="hint">${bulkEsc(r.memo||"월별 수익")}</div></div><span><b class="${Number(r.amount)>=0?"amt-plus":"amt-minus"}">${Number(r.amount)>=0?"+":"-"}${won(Math.abs(Number(r.amount)))}</b> <button class="del" onclick="deleteAssetReturn(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">아직 월별 수익 기록이 없어요</div>';
+}
+
 function renderAssets(){
  const list=document.getElementById("assetList"),total=document.getElementById("assetTotal");if(!list||!total)return;
  total.textContent=won(assets.reduce((s,a)=>s+Number(a.value||0),0));
- list.innerHTML=assets.length?assets.map(a=>`<div class="acct-box" onclick="editAsset(${a.id})" style="cursor:pointer"><div class="acct-top"><div><div class="acct-name">${a.type==="pension"?"연금저축":"주식"} · ${bulkEsc(a.name)}</div><div class="acct-use">${bulkEsc(a.memo||"탭해서 수정")}</div></div></div><div class="acct-bal">${won(a.value)}</div></div>`).join(""):'<div class="empty">연금저축이나 주식을 추가해보세요</div>';
- const sel=document.getElementById("arAsset");if(sel)sel.innerHTML=assets.length?assets.map(a=>`<option value="${a.id}">${a.type==="pension"?"연금저축":"주식"} · ${bulkEsc(a.name)}</option>`).join(""):'<option value="">자산을 먼저 추가하세요</option>';
+ list.innerHTML=assets.length?assets.map(a=>`<div class="acct-box" onclick="editAsset(${a.id})" style="cursor:pointer"><div class="acct-top"><div><div class="acct-name">${a.type==="savings"?"적금통장":a.type==="pension"?"연금저축":"주식계좌"} · ${bulkEsc(a.name)}</div><div class="acct-use">${bulkEsc(a.memo||"탭해서 수정")}</div>${a.accountNo?`<div class="account-no">${bulkEsc(a.accountNo)} <button class="copy-mini" onclick="event.stopPropagation();copyAccountNo('${String(a.accountNo).replace(/'/g,"\'")}')">복사</button></div>`:""}<div class="hint">관리주체 · ${bulkEsc(a.owner||"공동")}</div></div></div><div class="acct-bal">${won(a.value)}</div></div>`).join(""):'<div class="empty">적금통장, 연금저축, 주식계좌를 추가해보세요</div>';
+ const sel=document.getElementById("arAsset");if(sel)sel.innerHTML=assets.length?assets.map(a=>`<option value="${a.id}">${a.type==="savings"?"적금통장":a.type==="pension"?"연금저축":"주식계좌"} · ${bulkEsc(a.name)}</option>`).join(""):'<option value="">자산을 먼저 추가하세요</option>';
  const ar=document.getElementById("assetRecurList");if(ar)ar.innerHTML=assetRecurring.length?assetRecurring.map(r=>{const f=accounts.find(a=>a.id===r.from),a=assets.find(x=>x.id===r.assetId);return `<div class="row"><div><b>${f?bulkEsc(f.name):"?"} → ${a?bulkEsc(a.name):"?"}</b><div class="hint">매월 ${r.day}일${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b>${won(r.amt)}</b> <button class="del" onclick="event.stopPropagation();delAssetRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 자산 자동이체가 없어요</div>';
 }
 /* ================= 백업/복원 ================= */
 function backup(){
- const data={records,accounts,recurring,assets,assetRecurring,assetGoal};
+ const data={records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets};
  const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
  const a=document.createElement("a");
  a.href=URL.createObjectURL(blob);
@@ -1218,7 +1303,7 @@ function restore(e){
    try{
      const d=JSON.parse(ev.target.result);
      if(!confirm("현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?"))return;
-     records=d.records||[]; accounts=d.accounts||[]; recurring=d.recurring||[]; assets=d.assets||[]; assetRecurring=d.assetRecurring||[]; assetGoal=d.assetGoal||{target:0};
+     records=d.records||[]; accounts=d.accounts||[]; recurring=d.recurring||[]; assets=d.assets||[]; assetRecurring=d.assetRecurring||[]; assetReturns=d.assetReturns||[]; assetGoal=d.assetGoal||{target:0}; assetGoals=d.assetGoals||{"2027":0,"2028":0,"2029":0}; monthlyBudgets=d.monthlyBudgets||{};
      save(); buildAcctSelect(); render(); alert("복원 완료!");
    }catch(err){ alert("파일을 읽을 수 없습니다."); }
  };
@@ -1359,12 +1444,31 @@ function drawTrend(){
 
 /* ================= v2 예산 / 대시보드 ================= */
 let viewYM = nowYM();
-function monthLabel(s){const [y,m]=s.split("-").map(Number);return `${y}년 ${m}월`;}
+function monthLabel(s){const [y,m]=s.split("-").map(Number);return `${String(y).slice(-2)}.${String(m).padStart(2,"0")}`;}
 function changeMonth(delta){
   const [y,m]=viewYM.split("-").map(Number); const d=new Date(y,m-1+delta,1);
   viewYM=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; render();
 }
-function getBudget(){return Number(localStorage.getItem("monthlyBudget")||0);}
+function getBudget(month=viewYM){
+  if(monthlyBudgets && Object.prototype.hasOwnProperty.call(monthlyBudgets,month)) return Number(monthlyBudgets[month]||0);
+  if(month===nowYM()) return Number(localStorage.getItem("monthlyBudget")||0);
+  return 0;
+}
+function setBudget(){
+  const current=getBudget(viewYM);
+  const raw=prompt(`${monthLabel(viewYM)} 예산을 입력하세요.`, current||"");
+  if(raw===null)return;
+  const n=Number(String(raw).replace(/,/g,""));
+  if(!Number.isFinite(n)||n<0){alert("예산 금액을 확인해주세요.");return;}
+  monthlyBudgets[viewYM]=n;
+  save(); renderDashboard(); renderAnalysis();
+}
+function saveAnalysisBudget(){
+  const n=Number(document.getElementById("analysisBudgetInput")?.value||0);
+  if(!Number.isFinite(n)||n<0){alert("예산 금액을 확인해주세요.");return;}
+  monthlyBudgets[analysisYM()]=n; save(); renderDashboard(); renderAnalysis();
+  alert(`${monthLabel(analysisYM())} 예산을 저장했어요.`);
+}
 function quickExpense(){setType("expense");showTab("input");document.getElementById("inDate").value=today();document.getElementById("inAmt").focus();}
 function quickIncome(){setType("income");showTab("input");document.getElementById("inDate").value=today();document.getElementById("inAmt").focus();}
 function renderDashboard(){
@@ -1373,9 +1477,9 @@ function renderDashboard(){
   const outs=records.filter(r=>r.type==="expense"&&ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
   const bal=accounts.reduce((s,a)=>s+a.bal,0), budget=getBudget(), wb=getWeddingBudget();
   const ws=records.filter(r=>r.type==="expense"&&r.cat==="기타").reduce((s,r)=>s+r.amt,0);
-  document.getElementById("heroMonth").textContent=monthLabel(m);document.getElementById("heroBal").textContent=won(bal);
+  document.getElementById("heroMonth").textContent=monthLabel(m);document.getElementById("heroMonthBalLabel").textContent=`${monthLabel(m)} 잔액`;document.getElementById("heroBal").textContent=won(bal);
   document.getElementById("heroIn").textContent=won(ins);document.getElementById("heroOut").textContent=won(outs);
-  document.getElementById("heroMonthBal").textContent=won(ins-outs);document.getElementById("monthTitle").textContent=monthLabel(m);
+  document.getElementById("heroMonthBal").textContent=won(ins-outs);document.getElementById("monthTitle").textContent=monthLabel(m);document.getElementById("budgetLabel").textContent=`${monthLabel(m)} 예산`;
   const bt=document.getElementById("budgetText"),bf=document.getElementById("budgetFill"),bp=document.getElementById("budgetProgress");
   if(budget){const pct=Math.round(outs/budget*100);bt.textContent=`${won(outs)} / ${won(budget)} (${pct}%)`;bf.style.width=Math.min(pct,100)+"%";bp.classList.toggle("over",outs>budget);}
   else{bt.textContent="설정 안 함";bf.style.width="0%";bp.classList.remove("over");}
@@ -1389,7 +1493,7 @@ function render(){
  // 상단 요약 3종
  const inSum  = records.filter(r=>r.type==="income" && ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
  const outSum = records.filter(r=>r.type==="expense"&& ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
- const total  = accounts.reduce((s,a)=>s+a.bal,0);
+ const total  = accounts.reduce((s,a)=>s+a.bal,0) + assets.reduce((s,a)=>s+Number(a.value||0),0);
  const _sumIn=document.getElementById("sumIn"); if(_sumIn) _sumIn.textContent=won(inSum);
  const _sumOut=document.getElementById("sumOut"); if(_sumOut) _sumOut.textContent=won(outSum);
  const _sumBal=document.getElementById("sumBal"); if(_sumBal) _sumBal.textContent=won(total);
@@ -1418,6 +1522,8 @@ function render(){
          <div>
            <div class="acct-name">${bulkEsc(a.name)}</div>
            <div class="acct-use">${bulkEsc(a.use || "용도 미입력")}</div>
+           ${a.accountNo?`<div class="account-no">${bulkEsc(a.accountNo)} <button class="copy-mini" onclick="event.stopPropagation();copyAccountNo('${String(a.accountNo).replace(/'/g,"\'")}')">복사</button></div>`:""}
+           <div class="hint">관리주체 · ${bulkEsc(a.owner||"공동")}</div>
          </div>
          <button class="del" onclick="event.stopPropagation();delAccount(${a.id})">삭제</button>
        </div>
@@ -1469,6 +1575,8 @@ function render(){
 
 /* ================= 탭 전환 ================= */
 function showTab(name){
+ const dash=document.getElementById("dashboard");
+ if(dash) dash.classList.toggle("hide", name==="accounts");
  ["input","accounts","report","settings"].forEach(t=>{
    const tab=document.getElementById("tab-"+t), btn=document.getElementById("btn-"+t);
    if(tab) tab.classList.toggle("hide", t!==name);
@@ -1545,49 +1653,41 @@ function getCurrentTotalAssets(){
  const invested=assets.reduce((sum,a)=>sum+Number(a.value||0),0);
  return cash+invested;
 }
-function getThreeYearGoalDate(){
- const d=new Date(); d.setFullYear(d.getFullYear()+3);
- return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,"0")}.${String(d.getDate()).padStart(2,"0")}`;
-}
-function saveAssetGoal(){
- const input=document.getElementById("assetGoalInput");
- const target=Number(input?.value||0);
- if(!target||target<=0){alert("3년 목표자산을 입력해주세요.");return;}
- assetGoal={target};
- localStorage.setItem("assetGoal",JSON.stringify(assetGoal));
- save();
- renderAnalysis();
- alert("3년 목표자산을 저장했어요! ");
+function saveAssetGoals(){
+ const vals={};
+ [2027,2028,2029].forEach(y=>vals[String(y)]=Number(document.getElementById("assetGoal"+y)?.value||0));
+ assetGoals=vals;
+ save(); renderAnalysis();
+ alert("연도별 목표자산을 저장했어요!");
 }
 function renderAssetGoal(){
- const box=document.getElementById("assetGoalOverview"),input=document.getElementById("assetGoalInput");
- if(!box)return;
- const target=Number(assetGoal?.target||0), current=getCurrentTotalAssets();
- if(input) input.value=target||"";
- if(!target){
-  box.innerHTML='<div class="empty">아직 3년 목표자산을 설정하지 않았어요.</div>';
-  return;
- }
- const progress=Math.min(100,Math.max(0,target?current/target*100:0));
- const remain=Math.max(target-current,0);
- const d=new Date(); const end=new Date(); end.setFullYear(end.getFullYear()+3);
- const months=Math.max(1,(end.getFullYear()-d.getFullYear())*12+(end.getMonth()-d.getMonth())+(end.getDate()>d.getDate()?0:0));
- const monthly=remain>0?Math.ceil(remain/months/10000)*10000:0;
- box.innerHTML=`<div class="analysis-summary"><div><span>현재 총자산</span><b>${won(current)}</b></div><div><span>3년 목표</span><b>${won(target)}</b></div><div><span>달성률</span><b>${progress.toFixed(1)}%</b></div></div><div class="analysis-item" style="margin-top:12px"><div class="analysis-line"><b>${getThreeYearGoalDate()}까지</b><span>${remain>0?'월 약 '+won(monthly)+' 필요':'목표 달성!'}</span></div><div class="bar"><i style="width:${progress}%"></i></div></div>`;
+ const box=document.getElementById("assetGoalOverview"); if(!box)return;
+ const current=getCurrentTotalAssets();
+ [2027,2028,2029].forEach(y=>{const el=document.getElementById("assetGoal"+y);if(el)el.value=Number(assetGoals[String(y)]||0)||"";});
+ const rows=[2027,2028,2029].map(y=>{
+   const target=Number(assetGoals[String(y)]||0);
+   const progress=target?Math.min(100,Math.max(0,current/target*100)):0;
+   return `<div class="analysis-item" style="margin-top:10px"><div class="analysis-line"><b>${y}.01.01</b><span>${target?`${won(target)} · ${progress.toFixed(1)}%`:`목표 미설정`}</span></div>${target?`<div class="bar"><i style="width:${progress}%"></i></div>`:""}</div>`;
+ }).join("");
+ box.innerHTML=rows;
 }
 
 function renderAnalysis(){
  renderAssetGoal();
  renderCategoryManager();
  const ym=analysisYM(),monthRecords=records.filter(r=>String(r.date||"").slice(0,7)===ym);
- const title=document.getElementById("analysisMonth");if(title)title.textContent=ym.replace("-",".")+"";
+ const title=document.getElementById("analysisMonth");if(title)title.textContent=monthLabel(ym);
+ const btitle=document.getElementById("budgetMonth");if(btitle)btitle.textContent=monthLabel(ym);
+ const bi=document.getElementById("analysisBudgetInput");if(bi)bi.value=getBudget(ym)||"";
+ const bo=document.getElementById("analysisBudgetOverview"); if(bo){ const bd=getBudget(ym), spent=monthRecords.filter(r=>r.type==="expense").reduce((a,r)=>a+Number(r.amt||0),0); const pct=bd?Math.round(spent/bd*100):0; bo.innerHTML=bd?`<div class="analysis-summary"><div><span>지출</span><b>${won(spent)}</b></div><div><span>예산</span><b>${won(bd)}</b></div><div><span>남은 예산</span><b>${won(Math.max(bd-spent,0))}</b></div></div><div class="analysis-item" style="margin-top:10px"><div class="analysis-line"><span>사용률</span><b>${pct}%</b></div><div class="bar"><i style="width:${Math.min(pct,100)}%"></i></div></div>`:`<div class="empty">${monthLabel(ym)} 예산이 아직 설정되지 않았어요.</div>`; }
  const assetBox=document.getElementById("assetOverview");
  if(assetBox){
    const cash=accounts.reduce((sum,a)=>sum+Number(a.bal||0),0);
+   const savings=assets.filter(a=>a.type==="savings").reduce((sum,a)=>sum+Number(a.value||0),0);
    const pension=assets.filter(a=>a.type==="pension").reduce((sum,a)=>sum+Number(a.value||0),0);
    const stock=assets.filter(a=>a.type==="stock").reduce((sum,a)=>sum+Number(a.value||0),0);
-   const total=cash+pension+stock;
-   const rows=[["통장·카드",cash],["연금저축",pension],["주식",stock]];
+   const total=cash+savings+pension+stock;
+   const rows=[["통장·카드",cash],["적금통장",savings],["연금저축",pension],["주식",stock]];
    assetBox.innerHTML=rows.map(([name,val])=>{
      const pct=total?Math.round(val/total*100):0;
      return `<div class="analysis-item"><div class="analysis-line"><b>${name}</b><span>${won(val)} · ${pct}%</span></div><div class="bar"><i style="width:${pct}%"></i></div></div>`;
@@ -1613,7 +1713,7 @@ function renderAnalysis(){
  if(cm){
    const sums={};monthRecords.filter(r=>r.type==="expense").forEach(r=>sums[r.cat||"기타"]=(sums[r.cat||"기타"]||0)+Number(r.amt||0));
    const rows=Object.entries(sums).sort((a,b)=>b[1]-a[1]);
-   cm.innerHTML=rows.length?rows.map(([n,v])=>`<div class="row"><span>${bulkEsc(n)}</span><b>${won(v)}</b></div>`).join(""):'<div class="empty">이번 달 지출이 없어요</div>';
+   cm.innerHTML=rows.length?rows.map(([n,v])=>`<div class="row"><span>${bulkEsc(n)}</span><b>${won(v)}</b></div>`).join(""):`<div class="empty">${monthLabel(ym)} 지출이 없어요</div>`;
  }
 }
 
@@ -1626,6 +1726,7 @@ function renderAnalysis(){
  setCloudClient();
  if(sb){ sb.auth.getSession().then(async ({data})=>{ if(data.session){cloudStatus(" 연결됨 · 로그인 상태");updateCloudUser();if(householdId) await cloudPull();} }); }
  document.getElementById("inDate").value = today(); // 오늘 날짜 기본값
+ const rm=document.getElementById("returnMonth"); if(rm) rm.value=nowYM();
  runRecurring();     // 밀린 반복이체 자동 처리
  runAssetRecurring();
  buildChips();       // 카테고리 칩 생성
