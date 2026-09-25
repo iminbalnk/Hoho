@@ -327,6 +327,7 @@ box-shadow:none!important;
     <div class="progress" id="budgetProgress"><div id="budgetFill" style="width:0%"></div></div>
     <button class="btn sub small" style="margin-top:10px" onclick="setBudget()">예산 설정</button>
   </div>
+</div>
 
 <!-- ===== 탭1: 입력 ===== -->
 <div id="tab-input">
@@ -564,6 +565,13 @@ box-shadow:none!important;
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* ================= 앱 오류 표시 ================= */
+window.addEventListener("error", function(e){
+  console.error("APP ERROR:", e.error || e.message);
+});
+window.addEventListener("unhandledrejection", function(e){
+  console.error("APP PROMISE ERROR:", e.reason);
+});
 /* ================= 데이터 ================= */
 // 오래된/깨진 브라우저 저장 데이터가 있어도 앱 전체가 멈추지 않도록 안전하게 읽어요.
 function readJSON(key, fallback){
