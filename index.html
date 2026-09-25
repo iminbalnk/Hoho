@@ -565,9 +565,20 @@ box-shadow:none!important;
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ================= 데이터 ================= */
-let records   = JSON.parse(localStorage.getItem("records")   || "[]");
-let accounts  = JSON.parse(localStorage.getItem("accounts")  || "[]");
-let recurring = JSON.parse(localStorage.getItem("recurring") || "[]");
+// 오래된/깨진 브라우저 저장 데이터가 있어도 앱 전체가 멈추지 않도록 안전하게 읽어요.
+function readJSON(key, fallback){
+  try{
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  }catch(e){
+    console.warn("LOCAL DATA RESET:", key, e);
+    return fallback;
+  }
+}
+
+let records   = readJSON("records", []);
+let accounts  = readJSON("accounts", []);
+let recurring = readJSON("recurring", []);
 if(!Array.isArray(records)) records=[];
 if(!Array.isArray(accounts)) accounts=[];
 if(!Array.isArray(recurring)) recurring=[];
@@ -575,15 +586,15 @@ let curType = "expense", curCat = "";
 let editId = null;
 
 const AUTO_ASSET_KEY = "assets";
-let assets = JSON.parse(localStorage.getItem("assets") || "[]");
-let assetRecurring = JSON.parse(localStorage.getItem("assetRecurring") || "[]");
-let assetReturns = JSON.parse(localStorage.getItem("assetReturns") || "[]");
+let assets = readJSON("assets", []);
+let assetRecurring = readJSON("assetRecurring", []);
+let assetReturns = readJSON("assetReturns", []);
 if(!Array.isArray(assets)) assets=[];
 if(!Array.isArray(assetRecurring)) assetRecurring=[];
 if(!Array.isArray(assetReturns)) assetReturns=[];
-let assetGoal = JSON.parse(localStorage.getItem("assetGoal") || 'null') || {target:0};
-let assetGoals = JSON.parse(localStorage.getItem("assetGoals") || "null") || {"2027":0,"2028":0,"2029":0};
-let monthlyBudgets = JSON.parse(localStorage.getItem("monthlyBudgets") || "null") || {};
+let assetGoal = readJSON("assetGoal", null) || {target:0};
+let assetGoals = readJSON("assetGoals", null) || {"2027":0,"2028":0,"2029":0};
+let monthlyBudgets = readJSON("monthlyBudgets", null) || {};
 
 function normalizeData(){
   if(!Array.isArray(accounts)) accounts=[];
@@ -615,7 +626,7 @@ function normalizeRecords(){
       if(a) acctId=a.id;
     }
     const amt=Number(r.amt!=null?r.amt:r.amount);
-    return {...r,id:r.id??(Date.now()+i),date:r.date||today(),amt:Number.isFinite(amt)?Math.abs(amt):0,
+    return {...r,id:r.id??(Date.now()+i),date:r.date||(()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;})(),amt:Number.isFinite(amt)?Math.abs(amt):0,
       cat:r.cat||r.category||(r.type==="income"?"기타":"기타"),acctId,
       memo:r.memo||""};
   }).filter(r=>r.amt>0 && r.acctId!=null);
