@@ -1,0 +1,9 @@
+{
+  "name":"가계쀼",
+  "short_name":"가계쀼",
+  "start_url":"./",
+  "display":"standalone",
+  "background_color":"#f8f4ed",
+  "theme_color":"#f8f4ed",
+  "icons":[]
+}
