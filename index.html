@@ -585,6 +585,28 @@ let assetGoal = JSON.parse(localStorage.getItem("assetGoal") || 'null') || {targ
 let assetGoals = JSON.parse(localStorage.getItem("assetGoals") || "null") || {"2027":0,"2028":0,"2029":0};
 let monthlyBudgets = JSON.parse(localStorage.getItem("monthlyBudgets") || "null") || {};
 
+function normalizeData(){
+  if(!Array.isArray(accounts)) accounts=[];
+  if(!Array.isArray(assets)) assets=[];
+  accounts=accounts.map((a,i)=>({
+    ...a,
+    id: Number.isFinite(Number(a.id)) ? Number(a.id) : Date.now()+i,
+    name: String(a.name||"통장"),
+    use: String(a.use||""),
+    bal: Number(a.bal)||0,
+    accountNo: String(a.accountNo||""),
+    owner: a.owner||"공동"
+  }));
+  assets=assets.map((a,i)=>({
+    ...a,
+    id: Number.isFinite(Number(a.id)) ? Number(a.id) : Date.now()+1000+i,
+    value: Number(a.value)||0,
+    owner: a.owner||"공동"
+  }));
+  if(!Array.isArray(records)) records=[];
+  records=records.map((r,i)=>({...r,id:Number.isFinite(Number(r.id))?Number(r.id):Date.now()+2000+i,acctId:r.acctId!=null?Number(r.acctId):null,amt:Number(r.amt)||0}));
+}
+
 function normalizeRecords(){
   records=(records||[]).map((r,i)=>{
     let acctId = r.acctId!=null ? Number(r.acctId) : null;
@@ -599,21 +621,7 @@ function normalizeRecords(){
   }).filter(r=>r.amt>0 && r.acctId!=null);
 }
 normalizeRecords();
-accounts=(accounts||[]).map((a,i)=>({
-  ...a,
-  id: a.id!=null ? Number(a.id) : Date.now()+i,
-  name: String(a.name||"통장"),
-  use: String(a.use||""),
-  bal: Number(a.bal)||0,
-  accountNo: String(a.accountNo||""),
-  owner: a.owner||"공동"
-}));
-assets=(assets||[]).map((a,i)=>({
-  ...a,
-  id: a.id!=null ? Number(a.id) : Date.now()+1000+i,
-  value: Number(a.value)||0,
-  owner: a.owner||"공동"
-}));
+normalizeData();
 
 const CATS = {
  income:  ["급여","용돈","이자","환급","기타"],
@@ -774,7 +782,9 @@ async function cloudPull(){
  if(error){alert("클라우드 불러오기 실패: "+error.message);return;}
  if(!data?.data){alert("아직 클라우드 데이터가 없어요. 현재 기기의 데이터를 먼저 저장할까요?");await cloudPush();return;}
  const d=data.data; cloudLoading=true;
- records=d.records||[];accounts=d.accounts||[];recurring=d.recurring||[];assets=d.assets||[];assetRecurring=d.assetRecurring||[];assetReturns=d.assetReturns||[];assetGoal=d.assetGoal||{target:0};assetGoals=d.assetGoals||{"2027":0,"2028":0,"2029":0};monthlyBudgets=d.monthlyBudgets||{}; localStorage.setItem("assetReturns",JSON.stringify(assetReturns)); localStorage.setItem("assetGoal",JSON.stringify(assetGoal)); localStorage.setItem("assetGoals",JSON.stringify(assetGoals)); localStorage.setItem("monthlyBudgets",JSON.stringify(monthlyBudgets));
+ records=d.records||[];accounts=d.accounts||[];recurring=d.recurring||[];assets=d.assets||[];assetRecurring=d.assetRecurring||[];assetReturns=d.assetReturns||[];assetGoal=d.assetGoal||{target:0};assetGoals=d.assetGoals||{"2027":0,"2028":0,"2029":0};monthlyBudgets=d.monthlyBudgets||{};
+ normalizeData();
+ localStorage.setItem("assetReturns",JSON.stringify(assetReturns)); localStorage.setItem("assetGoal",JSON.stringify(assetGoal)); localStorage.setItem("assetGoals",JSON.stringify(assetGoals)); localStorage.setItem("monthlyBudgets",JSON.stringify(monthlyBudgets));
  if(d.autoCategoryRules)localStorage.setItem(AUTO_CAT_KEY,JSON.stringify(d.autoCategoryRules));
  localSaveOnly(); cloudLoading=false;
  buildChips();buildAcctSelect();renderAssets();render();
@@ -1362,6 +1372,7 @@ function restore(e){
      const d=JSON.parse(ev.target.result);
      if(!confirm("현재 데이터를 백업 파일로 덮어씁니다. 계속할까요?"))return;
      records=d.records||[]; accounts=d.accounts||[]; recurring=d.recurring||[]; assets=d.assets||[]; assetRecurring=d.assetRecurring||[]; assetReturns=d.assetReturns||[]; assetGoal=d.assetGoal||{target:0}; assetGoals=d.assetGoals||{"2027":0,"2028":0,"2029":0}; monthlyBudgets=d.monthlyBudgets||{};
+     normalizeData();
      save(); buildAcctSelect(); render(); alert("복원 완료!");
    }catch(err){ alert("파일을 읽을 수 없습니다."); }
  };
@@ -1799,25 +1810,46 @@ function renderAnalysis(){
 
 (function init(){
  try {
- // 클라우드 설정 복원
- const sbU=document.getElementById("sbUrl"), sbK=document.getElementById("sbKey");
- if(sbU) sbU.value=localStorage.getItem("sbUrl")||"https://fegoelbzlomrthtpbafb.supabase.co";
- if(sbK) sbK.value=localStorage.getItem("sbKey")||"";
- const hh=document.getElementById("householdIdInput"); if(hh) hh.value=householdId;
- setCloudClient();
- if(sb){ sb.auth.getSession().then(async ({data})=>{ if(data.session){cloudStatus(" 연결됨 · 로그인 상태");updateCloudUser();if(householdId) await cloudPull();} }); }
- document.getElementById("inDate").value = today(); // 오늘 날짜 기본값
- const rm=document.getElementById("returnMonth"); if(rm) rm.value=nowYM();
- runRecurring();     // 밀린 반복이체 자동 처리
- runAssetRecurring();
- buildChips();       // 카테고리 칩 생성
- buildAcctSelect();  // 통장 선택 목록 생성
- renderAssets();
- renderAnalysis();
- render();           // 첫 화면 그리기
+   // 클라우드 설정 복원
+   const sbU=document.getElementById("sbUrl"), sbK=document.getElementById("sbKey");
+   if(sbU) sbU.value=localStorage.getItem("sbUrl")||"https://fegoelbzlomrthtpbafb.supabase.co";
+   if(sbK) sbK.value=localStorage.getItem("sbKey")||"";
+   const hh=document.getElementById("householdIdInput"); if(hh) hh.value=householdId;
+   setCloudClient();
+
+   const inDate=document.getElementById("inDate"); if(inDate) inDate.value=today();
+   const rm=document.getElementById("returnMonth"); if(rm) rm.value=nowYM();
+
+   // 먼저 화면을 그려서 선택적 기능 하나가 오류 나도 앱 전체가 빈 화면이 되지 않게 합니다.
+   buildChips();
+   buildAcctSelect();
+   renderAssets();
+   render();
+
+   // 분석 화면은 메인 화면과 분리해서 오류가 나도 기본 화면을 막지 않게 합니다.
+   try{ renderAnalysis(); }catch(e){ console.error("ANALYSIS INIT ERROR:",e); }
+
+   // 반복이체는 화면 표시 후 실행하고, 실행된 내용은 다시 화면에 반영합니다.
+   try{
+     runRecurring();
+     runAssetRecurring();
+     render();
+   }catch(e){ console.error("RECURRING INIT ERROR:",e); }
+
+   // 클라우드 세션 확인도 기본 화면 표시와 분리합니다.
+   if(sb){
+     sb.auth.getSession().then(async ({data})=>{
+       if(data.session){
+         cloudStatus(" 연결됨 · 로그인 상태");
+         updateCloudUser();
+         if(householdId) await cloudPull();
+       }
+     }).catch(e=>console.error("AUTH INIT ERROR:",e));
+   }
  } catch(e) {
    console.error("APP INIT ERROR:", e);
-   try { showTab("input"); } catch(_) {}
+   const msg=document.getElementById("title");
+   if(msg) msg.insertAdjacentHTML("afterend",`<div style="padding:16px;color:#ffb4aa;font-size:13px">앱 초기화 오류가 발생했어요. 새로고침해 주세요.<br><small>${bulkEsc(e?.message||e)}</small></div>`);
  }
 })();
 </script>
