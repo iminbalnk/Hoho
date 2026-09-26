@@ -605,15 +605,16 @@ html, body, input, select, textarea, button, option {
 
 <!-- ===== 탭2: 통장 ===== -->
 <div id="tab-accounts" class="hide">
- <div class="card" style="margin-bottom:12px">
-  <div class="section-title"><h3>통장 · 카드 현황</h3></div>
- </div>
  <div class="subtabs">
   <button class="active" onclick="showAssetPane('current',this)"> 현재자산</button>
   <button onclick="showAssetPane('future',this)"> 미래자산</button>
  </div>
 
  <div id="asset-pane-current" class="subpane">
+  <div class="card">
+   <div class="section-title"><h3>우리 쀼자산</h3><b id="currentAssetTotal">0원</b></div>
+   <div id="acctList"></div>
+  </div>
   <div class="card">
    <h3>통장 · 카드 추가</h3>
    <label>이름</label><input type="text" id="acName" placeholder="예: 급여통장">
@@ -622,10 +623,6 @@ html, body, input, select, textarea, button, option {
    <label>계좌번호 <span class="hint">선택</span></label><input type="text" id="acNo" inputmode="numeric" placeholder="예: 1234-5678-9012">
    <label>관리주체</label><select id="acOwner"><option value="공동">공동</option><option value="민경">민경</option><option value="호재">호재</option></select>
    <button class="btn" onclick="addAccount()">추가하기</button>
-  </div>
-  <div class="card">
-   <div class="section-title"><h3>통장 · 카드 현황</h3><b id="currentAssetTotal">0원</b></div>
-   <div id="acctList"></div>
   </div>
  </div>
 
@@ -706,38 +703,31 @@ html, body, input, select, textarea, button, option {
 </div>
 <div id="tab-settings" class="hide">
  <div class="card">
-   <div class="section-kicker">CLOUD</div><h3> 두 사람 함께 쓰기</h3>
-   <p class="hint">Supabase에 연결하면 두 휴대폰에서 같은 가계부를 사용할 수 있어요. Publishable Key는 이곳에 직접 붙여넣으면 됩니다.</p>
-   <label>Supabase Project URL</label>
-   <input id="sbUrl" placeholder="https://xxxxxxxx.supabase.co">
-   <label>Publishable Key</label>
-   <input id="sbKey" type="password" placeholder="sb_publishable_...">
-   <div class="grid2" style="margin-top:10px">
-     <button class="btn" onclick="cloudConnect()"> 연결하기</button>
-     <button class="btn sub" onclick="cloudPull()">↻ 클라우드 불러오기</button>
+   <div class="section-kicker">ACCOUNT</div><h3>가계쀼 로그인</h3>
+   <p class="hint">각자 자기 계정으로 로그인하고, 같은 가계부 키를 공유해서 두 분만 함께 사용할 수 있어요.</p>
+   <div id="loginModeTabs" class="return-tabs" style="margin-bottom:14px">
+     <button class="active" type="button" onclick="setAuthMode('login')">로그인</button>
+     <button type="button" onclick="setAuthMode('signup')">회원가입</button>
    </div>
-   <div id="cloudStatus" class="hint" style="margin-top:10px">연결되지 않음</div>
- </div>
- <div class="card">
-   <div class="section-kicker">ACCOUNT</div><h3> 로그인</h3>
-   <label>이메일</label><input id="sbEmail" type="email" placeholder="Supabase 가입 이메일">
-   <label>비밀번호</label><input id="sbPassword" type="password" placeholder="비밀번호">
-   <div class="grid2" style="margin-top:10px">
-     <button class="btn" onclick="cloudLogin()">로그인</button>
-     <button class="btn sub" onclick="cloudLogout()">로그아웃</button>
-   </div>
+   <label>이메일</label><input id="sbEmail" type="email" autocomplete="email" placeholder="이메일">
+   <label>비밀번호</label><input id="sbPassword" type="password" autocomplete="current-password" placeholder="비밀번호">
+   <button id="authSubmitBtn" class="btn" style="margin-top:10px" onclick="authSubmit()">로그인</button>
+   <button id="authLogoutBtn" class="btn sub" style="margin-top:8px;display:none" onclick="cloudLogout()">로그아웃</button>
    <div id="cloudUser" class="hint" style="margin-top:10px"></div>
+   <div id="cloudStatus" class="hint" style="margin-top:6px">로그인하지 않았어요</div>
  </div>
  <div class="card">
-   <div class="section-kicker">HOUSEHOLD</div><h3> 가계쀼</h3>
-   <button class="btn" onclick="cloudCreateHousehold()">새 가계부 만들기</button>
-   <label style="margin-top:14px">공유할 가계부 ID</label>
-   <input id="householdIdInput" placeholder="상대방에게 받은 가계부 ID">
-   <button class="btn sub" style="margin-top:8px" onclick="cloudJoinHousehold()">이 가계부에 참여하기</button>
+   <div class="section-kicker">OUR HOUSEHOLD</div><h3>우리 쀼자산</h3>
+   <p class="hint">가계부를 만든 뒤 표시되는 키를 배우자에게 보내주세요. 한 가계부에는 최대 2명만 참여할 수 있어요.</p>
+   <button class="btn" onclick="cloudCreateHousehold()">우리 가계부 만들기</button>
+   <div id="createdShareCode" class="analysis-total" style="margin-top:12px;display:none"></div>
+   <label style="margin-top:14px">가계부 키로 참여</label>
+   <input id="householdIdInput" placeholder="예: Q7M4-K2PX" autocomplete="off">
+   <button class="btn sub" style="margin-top:8px" onclick="cloudJoinHousehold()">가계부에 참여하기</button>
    <div id="householdInfo" class="hint" style="margin-top:10px"></div>
  </div>
  <div class="card">
-   <h3> 백업 / 복원</h3>
+   <h3>백업 / 복원</h3>
    <button class="btn" onclick="backup()">데이터 내보내기 (백업)</button>
    <label style="margin-top:16px">백업 파일 불러오기</label>
    <input type="file" id="restoreFile" accept=".json" onchange="restore(event)">
@@ -870,6 +860,7 @@ let cloudSyncing = false;
 let cloudLoading = false;
 let sb = null;
 let householdId = localStorage.getItem("householdId") || "";
+let householdShareCode = localStorage.getItem("householdShareCode") || "";
 
 function localSaveOnly(){
  localStorage.setItem("records", JSON.stringify(records));
@@ -886,122 +877,121 @@ function save(){
  localSaveOnly();
  if(!cloudLoading) cloudPush().catch(()=>{});
 }
+const SUPABASE_URL = "https://fegoelbzlomrthtpbafb.supabase.co";
+// 최초 배포 전에 아래 한 줄에 Supabase의 Publishable Key를 한 번만 넣어주세요.
+// 기존 휴대폰에 저장된 키가 있으면 그 값을 우선 사용합니다.
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_JDChuQvxGOaAVVqaYzeByw_срХАЕЕгЕ";
+let authMode = "login";
+
 function cloudCfg(){
- return {url:localStorage.getItem("sbUrl")||"", key:localStorage.getItem("sbKey")||""};
+ const saved=localStorage.getItem("sbKey")||"";
+ const key=(saved && saved!="sb_publishable_JDChuQvxGOaAVVqaYzeByw_срХАЕЕгЕ")?saved:SUPABASE_PUBLISHABLE_KEY;
+ return {url:SUPABASE_URL, key};
 }
 function cloudStatus(msg){
  const el=document.getElementById("cloudStatus"); if(el) el.textContent=msg;
 }
 function setCloudClient(){
  const c=cloudCfg();
- if(!c.url || !c.key || !window.supabase) return false;
- try{ sb=window.supabase.createClient(c.url,c.key); return true; }catch(e){ cloudStatus("연결 설정을 확인해주세요."); return false; }
+ if(!c.url || !c.key || c.key.indexOf("__PASTE_")===0 || !window.supabase) return false;
+ try{
+   sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+   localStorage.setItem("sbUrl",c.url); localStorage.setItem("sbKey",c.key);
+   return true;
+ }catch(e){ console.error("SUPABASE CLIENT ERROR:",e); cloudStatus("Supabase 설정을 확인해주세요."); return false; }
+}
+function setAuthMode(mode){
+ authMode=mode;
+ document.querySelectorAll("#loginModeTabs button").forEach((b,i)=>b.classList.toggle("active",(mode==="login"&&i===0)||(mode==="signup"&&i===1)));
+ const btn=document.getElementById("authSubmitBtn");
+ if(btn)btn.textContent=mode==="login"?"로그인":"회원가입";
+ const pw=document.getElementById("sbPassword");
+ if(pw)pw.autocomplete=mode==="login"?"current-password":"new-password";
+}
+async function authSubmit(){
+ if(authMode==="signup") return cloudSignup();
+ return cloudLogin();
 }
 async function cloudConnect(){
- const url=document.getElementById("sbUrl")?.value.trim()||"", key=document.getElementById("sbKey")?.value.trim()||"";
- if(!url||!key){alert("Project URL과 Publishable Key를 입력해주세요.");return;}
- localStorage.setItem("sbUrl",url); localStorage.setItem("sbKey",key);
- if(!setCloudClient()){alert("Supabase 연결 설정을 확인해주세요.");return;}
- const {data,error}=await sb.auth.getSession();
- if(error){alert("Supabase 연결 실패: "+error.message);return;}
- cloudStatus(data.session?" 연결됨 · 로그인 상태":" 연결됨 · 로그인 필요");
- await updateCloudUser();
- if(data.session && householdId) await cloudPull();
+ if(!setCloudClient()){alert("앱의 Supabase 설정이 아직 완료되지 않았어요. Publishable Key를 한 번만 앱에 넣어주세요.");return;}
+ cloudStatus("연결됨 · 로그인 필요");
+ try{await updateCloudUser();}catch(e){}
+}
+async function cloudSignup(){
+ try{
+  if(!setCloudClient()){alert("앱의 Supabase 설정이 아직 완료되지 않았어요.");return;}
+  const email=(document.getElementById("sbEmail")?.value||"").trim();
+  const password=document.getElementById("sbPassword")?.value||"";
+  if(!email||!password){alert("이메일과 비밀번호를 입력해주세요.");return;}
+  if(password.length<6){alert("비밀번호는 6자 이상으로 입력해주세요.");return;}
+  const {data,error}=await sb.auth.signUp({email,password});
+  if(error){alert("회원가입 실패\n\n"+error.message);return;}
+  if(data?.session){
+    cloudStatus("회원가입 및 로그인 완료");
+    await updateCloudUser();
+    alert("회원가입이 완료됐어요! 이제 우리 가계부를 만들어주세요. 🎉");
+  }else{
+    alert("회원가입 완료! 이메일 인증이 필요한 경우 메일을 확인한 뒤 로그인해주세요.");
+    setAuthMode("login");
+  }
+ }catch(e){alert("회원가입 중 오류가 발생했어요.\n\n"+(e?.message||String(e)));}
 }
 async function cloudLogin(){
  try{
-  const url=(document.getElementById("sbUrl")?.value||"").trim().replace(/\/$/,"");
-  const key=(document.getElementById("sbKey")?.value||"").trim();
+  if(!setCloudClient()){alert("앱의 Supabase 설정이 아직 완료되지 않았어요.");return;}
   const email=(document.getElementById("sbEmail")?.value||"").trim();
   const password=document.getElementById("sbPassword")?.value||"";
-
-  if(!url || !key){ alert("Supabase Project URL과 Publishable Key를 먼저 입력해주세요."); return; }
-  if(!email || !password){ alert("이메일과 비밀번호를 입력해주세요."); return; }
-  if(!/^https:\/\/[^\s]+\.supabase\.co$/.test(url)){
-   alert("Project URL 형식이 올바르지 않아요.\nhttps://프로젝트ID.supabase.co 형식으로 입력해주세요."); return;
-  }
-  if(!window.supabase || typeof window.supabase.createClient!=="function"){
-   alert("Supabase 모듈을 불러오지 못했어요.\n페이지를 새로고침해 주세요."); return;
-  }
-
-  localStorage.setItem("sbUrl",url);
-  localStorage.setItem("sbKey",key);
-  sb=window.supabase.createClient(url,key);
-
-  // SDK의 signInWithPassword에서 TypeError가 나는 경우를 피하기 위해
-  // Auth REST API로 이메일/비밀번호 로그인을 먼저 처리합니다.
-  const response=await fetch(url+"/auth/v1/token?grant_type=password",{
-   method:"POST",
-   headers:{
-    "apikey":key,
-    "Authorization":"Bearer "+key,
-    "Content-Type":"application/json"
-   },
-   body:JSON.stringify({email:email,password:password})
-  });
-
-  let body=null;
-  try{ body=await response.json(); }catch(e){}
-
-  if(!response.ok){
-   const msg=body?.msg||body?.message||body?.error_description||body?.error||("HTTP "+response.status);
-   const code=body?.code||body?.error_code||"";
-   alert("로그인 실패\n\n"+msg+(code?"\n\n코드: "+code:""));
-   return;
-  }
-
-  if(!body?.access_token || !body?.refresh_token){
-   alert("로그인은 처리됐지만 세션 정보가 오지 않았어요.\nSupabase Auth 설정을 확인해주세요.");
-   return;
-  }
-
-  // REST에서 받은 세션을 supabase-js 클라이언트에 넣어 이후 클라우드 기능도 그대로 사용합니다.
-  const sessionResult=await sb.auth.setSession({
-   access_token:body.access_token,
-   refresh_token:body.refresh_token
-  });
-  if(sessionResult?.error){
-   alert("로그인 세션 설정 실패\n\n"+(sessionResult.error.message||String(sessionResult.error)));
-   return;
-  }
-
+  if(!email||!password){alert("이메일과 비밀번호를 입력해주세요.");return;}
+  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  if(error){alert("로그인 실패\n\n"+error.message);return;}
   document.getElementById("sbPassword").value="";
-  cloudStatus(" 로그인됨");
-  try{ await updateCloudUser(); }catch(e){ console.error("USER UI ERROR:",e); }
-  if(householdId){
-   try{ await cloudPull(); }catch(e){ console.error("CLOUD PULL ERROR:",e); }
-  }
-  alert("로그인 성공! 🎉");
- }catch(e){
-  console.error("LOGIN REST ERROR:",e);
-  alert("로그인 중 오류가 발생했어요.\n\n"+(e?.message||String(e))+(e?.name?"\n\n유형: "+e.name:""));
- }
+  cloudStatus("로그인됨");
+  await updateCloudUser();
+  if(householdId) await cloudPull();
+ }catch(e){console.error("LOGIN ERROR:",e);alert("로그인 중 오류가 발생했어요.\n\n"+(e?.message||String(e)));}
 }
 async function cloudLogout(){
- if(sb) await sb.auth.signOut(); householdId=""; localStorage.removeItem("householdId");
- const hi=document.getElementById("householdInfo");if(hi)hi.textContent=""; cloudStatus("로그아웃됨"); updateCloudUser();
+ if(sb) await sb.auth.signOut();
+ householdId=""; householdShareCode=""; localStorage.removeItem("householdId"); localStorage.removeItem("householdShareCode");
+ const hi=document.getElementById("householdInfo");if(hi)hi.textContent="";
+ const code=document.getElementById("createdShareCode");if(code)code.style.display="none";
+ cloudStatus("로그아웃됨");
+ updateCloudUser();
 }
 async function updateCloudUser(){
- if(!sb)return; const {data}=await sb.auth.getUser();
- const el=document.getElementById("cloudUser"); if(el) el.textContent=data?.user ? `로그인: ${data.user.email}` : "로그인하지 않았어요.";
+ if(!sb)return;
+ const {data}=await sb.auth.getUser();
+ const el=document.getElementById("cloudUser");
+ const logout=document.getElementById("authLogoutBtn");
+ const submit=document.getElementById("authSubmitBtn");
+ if(el)el.textContent=data?.user?`로그인: ${data.user.email}`:"로그인하지 않았어요.";
+ if(logout)logout.style.display=data?.user?"block":"none";
+ if(submit)submit.style.display=data?.user?"none":"block";
 }
 async function cloudCreateHousehold(){
- if(!sb && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
- const {data,error}=await sb.rpc("create_household",{p_name:"가계쀼"});
- if(error){alert("가계부 만들기 실패: "+error.message+"\n\nSupabase SQL 설정을 먼저 완료해주세요.");return;}
- householdId=data; localStorage.setItem("householdId",householdId);
- document.getElementById("householdIdInput").value=householdId;
- document.getElementById("householdInfo").textContent="이 ID를 배우자/공동 사용자에게 보내주세요.";
- await cloudPush();
+ if(!sb && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
+ const {data:userData}=await sb.auth.getUser();
+ if(!userData?.user){alert("먼저 로그인해주세요.");return;}
+ const {data,error}=await sb.rpc("create_household",{p_name:"우리 쀼자산"});
+ if(error){alert("가계부 만들기 실패\n\n"+error.message);return;}
+ const code=typeof data==="string"?data:(data?.share_code||data?.code||"");
+ const hid=typeof data==="object"?(data?.household_id||data?.id||""):"";
+ if(!code || !hid){alert("가계부 정보를 받지 못했어요. Supabase SQL 설정을 확인해주세요.");return;}
+ householdId=hid; householdShareCode=code;
+ localStorage.setItem("householdId",householdId); localStorage.setItem("householdShareCode",householdShareCode);
+ const inp=document.getElementById("householdIdInput");if(inp)inp.value=code;
+ const box=document.getElementById("createdShareCode");if(box){box.style.display="block";box.innerHTML=`가계부 키<br><strong style="font-size:1.35em;letter-spacing:.08em">${bulkEsc(code)}</strong><br><span class="hint">이 키를 배우자에게 보내주세요.</span>`;}
+ const hi=document.getElementById("householdInfo");if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
+ await cloudPull();
 }
 async function cloudJoinHousehold(){
- if(!sb && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
- const id=document.getElementById("householdIdInput")?.value.trim()||"";
- if(!id){alert("가계부 ID를 입력해주세요.");return;}
- const {data,error}=await sb.rpc("join_household",{p_household_id:id});
- if(error){alert("참여 실패: "+error.message);return;}
+ if(!sb && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
+ const id=(document.getElementById("householdIdInput")?.value||"").trim().toUpperCase();
+ if(!id){alert("가계부 키를 입력해주세요.");return;}
+ const {data,error}=await sb.rpc("join_household",{p_share_code:id});
+ if(error){alert("가계부 참여 실패\n\n"+error.message);return;}
  householdId=id;localStorage.setItem("householdId",id);
- document.getElementById("householdInfo").textContent="공유 가계부에 연결됐어요.";
+ const hi=document.getElementById("householdInfo");if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
  await cloudPull();
 }
 function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules(),categories:{income:CATS.income,expense:CATS.expense}};}
@@ -2124,12 +2114,12 @@ function renderAnalysis(){
 
 (function init(){
  try {
-   // 클라우드 설정 복원
-   const sbU=document.getElementById("sbUrl"), sbK=document.getElementById("sbKey");
-   if(sbU) sbU.value=localStorage.getItem("sbUrl")||"https://fegoelbzlomrthtpbafb.supabase.co";
-   if(sbK) sbK.value=localStorage.getItem("sbKey")||"";
-   const hh=document.getElementById("householdIdInput"); if(hh) hh.value=householdId;
+   // 클라우드 설정 복원: URL/키 입력 UI는 없애고 앱 설정을 자동 사용합니다.
+   const hh=document.getElementById("householdIdInput"); if(hh) hh.value=householdShareCode;
+   const code=document.getElementById("createdShareCode");
+   if(code && householdShareCode){code.style.display="block";code.innerHTML=`가계부 키<br><strong style="font-size:1.35em;letter-spacing:.08em">${bulkEsc(householdShareCode)}</strong><br><span class="hint">이 키를 배우자에게 보내주세요.</span>`;}
    setCloudClient();
+   updateCloudUser().catch(()=>{});
 
    const inDate=document.getElementById("inDate"); if(inDate) inDate.value=today();
    const rm=document.getElementById("returnMonth"); if(rm) rm.value=nowYM();
