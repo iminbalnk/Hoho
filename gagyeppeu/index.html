@@ -9,6 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="가계쀼">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
 <style>
  :root{
    --green:#1b5e42; --green-soft:#e5f2ec; --cream:#fbf9f4;
@@ -22,16 +24,6 @@
    --plus:#4db892; --minus:#e88a72; --move:#4db892;
    --shadow:0 4px 16px rgba(0,0,0,.3);
  }
-@font-face{
-font-family:'MaruBuri';
-src:url('./fonts/MaruBuri-Regular.woff2') format('woff2');
-}
- 
-@font-face{
-font-family:'MaruBuriBold';
-src:url('./fonts/MaruBuri-Bold.woff2') format('woff2');
-}
- 
 *{
 box-sizing:border-box;
 margin:0;
@@ -43,7 +35,7 @@ input,
 select,
 textarea,
 button{
-font-family:'MaruBuri','Apple SD Gothic Neo',sans-serif;
+font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',system-ui,sans-serif;
 }
  
 h2,
@@ -52,7 +44,7 @@ h3,
 .acct-name,
 .acct-bal,
 .month-title{
-font-family:'MaruBuriBold','MaruBuri',sans-serif;
+font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',system-ui,sans-serif;
 }
  body{background:var(--cream);color:var(--text);padding:16px;padding-bottom:90px;max-width:520px;margin:0 auto;transition:background .2s;}
  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
@@ -326,7 +318,7 @@ body.dark{
   text-align:center!important;
 }
 .head{justify-content:center!important;margin:2px 0 20px!important;}
-#title{font-family:'MaruBuriBold','MaruBuri',serif!important;color:#e8d4b8!important;font-size:25px!important;letter-spacing:-.8px;}
+#title{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',system-ui,sans-serif!important;color:#e8d4b8!important;font-size:25px!important;letter-spacing:-.8px;}
 h2,h3{color:#e8d4b8!important;}
 .card,.bulk-card{
   background:var(--card)!important;
@@ -355,7 +347,7 @@ input::placeholder,textarea::placeholder{color:#806f63!important;}
   border:1px solid #2d614f!important;
   border-radius:14px!important;
   min-height:44px;
-  font-family:'MaruBuriBold','MaruBuri',serif!important;
+  font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',system-ui,sans-serif!important;
 }
 .btn.sub,.btn.secondary{background:#392820!important;color:#dbcbbd!important;border-color:#574033!important;}
 .btn:hover{filter:brightness(1.08);}
@@ -432,6 +424,65 @@ input::placeholder,textarea::placeholder{color:#806f63!important;}
 #tab-settings .card p{max-width:430px;margin-left:auto;margin-right:auto;}
 /* 입력 탭에서만 대시보드(잔액/예산)가 보이도록 이동했으므로 다른 탭에는 노출되지 않습니다. */
 
+
+/* ===== 가계쀼 final usability polish ===== */
+body,input,select,textarea,button,h1,h2,h3,h4,h5,h6,.btn,.navbar button,.chip,label{
+  font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",system-ui,sans-serif!important;
+  -webkit-font-smoothing:antialiased;
+}
+#dashboard .budget-editor,
+.category-tools,
+.category-tools .tool-row{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+#dashboard .budget-editor input,
+.category-tools input,
+.category-tools select{
+  flex:1;
+  min-width:0;
+}
+.category-tools{flex-direction:column;align-items:stretch;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);}
+.category-tools .tool-row{width:100%;}
+.category-tools .tool-row .btn{margin-top:0;white-space:nowrap;width:auto;min-width:82px;}
+.category-list{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin-top:9px;}
+.category-pill{display:inline-flex;align-items:center;gap:4px;padding:7px 9px;border-radius:999px;background:#382820;border:1px solid #533c30;color:#d9cbc0;font-size:12px;}
+.category-pill button{border:0;background:transparent;color:#c6a99a;padding:1px 3px;cursor:pointer;font-size:14px;line-height:1;}
+.category-pill button.delete{color:#d9937f;}
+@media(max-width:420px){.category-tools .tool-row{flex-wrap:wrap}.category-tools .tool-row .btn{width:100%;}}
+
+
+/* ===== 다중입력창 톤 다운 ===== */
+.bulk-card{
+  background:rgba(43,31,26,.72)!important;
+  border-color:rgba(137,108,87,.28)!important;
+}
+.bulk-card .sms-area{
+  min-height:210px!important;
+  background:rgba(245,235,220,.065)!important;
+  border:1px solid rgba(205,178,151,.22)!important;
+  color:#e8d9c8!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+.bulk-card .sms-area::placeholder{
+  color:rgba(201,181,160,.42)!important;
+}
+.bulk-card .sms-area:focus{
+  background:rgba(245,235,220,.085)!important;
+  border-color:rgba(118,154,133,.42)!important;
+  box-shadow:0 0 0 3px rgba(118,154,133,.07),inset 0 1px 0 rgba(255,255,255,.025)!important;
+}
+.bulk-preview .bulk-row,.bulk-row{
+  background:rgba(245,235,220,.045)!important;
+  border-color:rgba(137,108,87,.20)!important;
+}
+
+</style>
+<style id="pretendard-override">
+html, body, input, select, textarea, button, option {
+  font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", system-ui, sans-serif !important;
+}
 </style>
 </head>
 <body>
@@ -462,7 +513,10 @@ input::placeholder,textarea::placeholder{color:#806f63!important;}
     </div>
     <div class="budget-head"><b id="budgetLabel">예산</b><span class="budget-val" id="budgetText">설정 안 함</span></div>
     <div class="progress" id="budgetProgress"><div id="budgetFill" style="width:0%"></div></div>
-    <button class="btn sub small" style="margin-top:10px" onclick="setBudget()">예산 설정</button>
+    <div class="budget-editor" style="margin-top:12px">
+      <input id="dashboardBudgetInput" type="number" min="0" step="10000" inputmode="numeric" placeholder="이 달의 예산을 입력하세요">
+      <button class="btn small" style="margin-top:0;flex:0 0 auto" onclick="setBudget()">저장</button>
+    </div>
   </div>
 </div>
 
@@ -624,6 +678,16 @@ input::placeholder,textarea::placeholder{color:#806f63!important;}
   </div>
   <div id="analysisBudgetOverview" style="margin-top:14px"></div>
  </div>
+>
+ <div class="card">
+  <div class="section-title"><div><div class="section-kicker">MONTHLY</div><h3>월별 변화</h3></div></div>
+  <div class="month-nav"><button class="btn sub" onclick="changeAnalysisMonth(-1)">‹</button><b id="analysisMonth"></b><button class="btn sub" onclick="changeAnalysisMonth(1)">›</button></div>
+  <div id="monthlyOverview"></div>
+ </div>
+ <div class="card">
+  <div class="section-title"><div><div class="section-kicker">CATEGORY</div><h3>월별 지출</h3></div></div>
+  <div id="categoryMonthly"></div>
+ </div>
  <div class="card">
   <div class="section-title"><div><div class="section-kicker">GOALS</div><h3>연도별 목표자산</h3></div></div>
   <p class="hint">각 연도 1월 1일 기준으로 목표 총자산을 따로 설정할 수 있어요.</p>
@@ -634,16 +698,7 @@ input::placeholder,textarea::placeholder{color:#806f63!important;}
   </div>
   <button class="btn" style="margin-top:10px" onclick="saveAssetGoals()">목표 저장</button>
   <div id="assetGoalOverview" style="margin-top:14px"></div>
- </div>
- <div class="card">
-  <div class="section-title"><div><div class="section-kicker">MONTHLY</div><h3>월별 변화</h3></div></div>
-  <div class="month-nav"><button class="btn sub" onclick="changeAnalysisMonth(-1)">‹</button><b id="analysisMonth"></b><button class="btn sub" onclick="changeAnalysisMonth(1)">›</button></div>
-  <div id="monthlyOverview"></div>
- </div>
- <div class="card">
-  <div class="section-title"><div><div class="section-kicker">CATEGORY</div><h3>월별 지출</h3></div></div>
-  <div id="categoryMonthly"></div>
- </div>
+ </div
  <div class="card">
   <div class="section-title"><div><div class="section-kicker">OVERVIEW</div><h3>전체 자산 분산</h3></div></div>
   <div id="assetOverview" class="analysis-grid"></div>
@@ -783,6 +838,14 @@ const CATS = {
 };
 function loadCustomCategories(){
  try{
+  const savedAll=JSON.parse(localStorage.getItem("categoryConfig")||"null");
+  if(savedAll && Array.isArray(savedAll.income) && Array.isArray(savedAll.expense)){
+    CATS.income=savedAll.income.map(x=>String(x||"").trim()).filter(Boolean);
+    CATS.expense=savedAll.expense.map(x=>String(x||"").trim()).filter(Boolean);
+    if(!CATS.income.length) CATS.income=["급여","용돈","이자","환급","기타"];
+    if(!CATS.expense.length) CATS.expense=["식비","교통","생활","쇼핑","의료","여가","기타"];
+    return;
+  }
   const saved=JSON.parse(localStorage.getItem("customCategories")||"{}");
   ["income","expense"].forEach(type=>{
    const list=Array.isArray(saved[type])?saved[type]:[];
@@ -797,6 +860,7 @@ function saveCustomCategories(){
  const base={income:["급여","용돈","이자","환급","기타"],expense:["식비","교통","생활","쇼핑","의료","여가","기타"]};
  const custom={income:CATS.income.filter(c=>!base.income.includes(c)),expense:CATS.expense.filter(c=>!base.expense.includes(c))};
  localStorage.setItem("customCategories",JSON.stringify(custom));
+ localStorage.setItem("categoryConfig",JSON.stringify({income:CATS.income,expense:CATS.expense}));
 }
 loadCustomCategories();
 const COLORS = ["#1b5e42","#2a9d8f","#e07a5f","#f2cc8f","#81b29a","#6d597a","#b56576"];
@@ -940,7 +1004,7 @@ async function cloudJoinHousehold(){
  document.getElementById("householdInfo").textContent="공유 가계부에 연결됐어요.";
  await cloudPull();
 }
-function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules()};}
+function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules(),categories:{income:CATS.income,expense:CATS.expense}};}
 async function cloudPush(){
  if(cloudSyncing||cloudLoading||!householdId)return;
  if(!sb && !setCloudClient())return;
@@ -964,6 +1028,12 @@ async function cloudPull(){
  normalizeData();
  localStorage.setItem("assetReturns",JSON.stringify(assetReturns)); localStorage.setItem("assetGoal",JSON.stringify(assetGoal)); localStorage.setItem("assetGoals",JSON.stringify(assetGoals)); localStorage.setItem("monthlyBudgets",JSON.stringify(monthlyBudgets));
  if(d.autoCategoryRules)localStorage.setItem(AUTO_CAT_KEY,JSON.stringify(d.autoCategoryRules));
+ if(d.categories && Array.isArray(d.categories.income) && Array.isArray(d.categories.expense)){
+   CATS.income=d.categories.income.map(x=>String(x||"").trim()).filter(Boolean);
+   CATS.expense=d.categories.expense.map(x=>String(x||"").trim()).filter(Boolean);
+   localStorage.setItem("categoryConfig",JSON.stringify({income:CATS.income,expense:CATS.expense}));
+   saveCustomCategories();
+ }
  localSaveOnly(); cloudLoading=false;
  buildChips();buildAcctSelect();renderAssets();render();
  cloudStatus(" 클라우드 데이터를 불러왔어요.");
@@ -1641,10 +1711,9 @@ function drawTrend(){
  if(!sel) return;
 
  // 지출 카테고리 목록으로 선택 상자 채우기 (한 번만)
- if(!sel.dataset.filled){
-   sel.innerHTML = CATS.expense.map(c=>`<option value="${c}">${c}</option>`).join("");
-   sel.dataset.filled = "1";
- }
+ const current=sel.value;
+ sel.innerHTML = CATS.expense.map(c=>`<option value="${bulkEsc(c)}">${bulkEsc(c)}</option>`).join("");
+ if(current && CATS.expense.includes(current)) sel.value=current;
  const cat = sel.value || CATS.expense[0];
 
  // 최근 6개월 라벨 만들기 (예: 2026-04 ~ 2026-09)
@@ -1702,10 +1771,9 @@ function getBudget(month=viewYM){
   return 0;
 }
 function setBudget(){
-  const current=getBudget(viewYM);
-  const raw=prompt(`${monthLabel(viewYM)} 예산을 입력하세요.`, current||"");
-  if(raw===null)return;
-  const n=Number(String(raw).replace(/,/g,""));
+  const input=document.getElementById("dashboardBudgetInput");
+  const raw=input ? String(input.value||"").replace(/,/g,"") : "";
+  const n=Number(raw);
   if(!Number.isFinite(n)||n<0){alert("예산 금액을 확인해주세요.");return;}
   monthlyBudgets[viewYM]=n;
   save(); renderDashboard(); renderAnalysis();
@@ -1727,8 +1795,12 @@ function renderDashboard(){
   document.getElementById("heroIn").textContent=won(ins);document.getElementById("heroOut").textContent=won(outs);
   document.getElementById("heroMonthBal").textContent=won(ins-outs);document.getElementById("monthTitle").textContent=monthLabel(m);document.getElementById("budgetLabel").textContent=`${monthLabel(m)} 예산`;
   const bt=document.getElementById("budgetText"),bf=document.getElementById("budgetFill"),bp=document.getElementById("budgetProgress");
-  if(budget){const pct=Math.round(outs/budget*100);bt.textContent=`${won(outs)} / ${won(budget)} (${pct}%)`;bf.style.width=Math.min(pct,100)+"%";bp.classList.toggle("over",outs>budget);}
-  else{bt.textContent="설정 안 함";bf.style.width="0%";bp.classList.remove("over");}
+  const budgetInput=document.getElementById("dashboardBudgetInput");
+  if(budgetInput) budgetInput.value = budget ? budget : "";
+  if(bt&&bf&&bp){
+    if(budget){const pct=Math.round(outs/budget*100);bt.textContent=`${won(outs)} / ${won(budget)} (${pct}%)`;bf.style.width=Math.min(pct,100)+"%";bp.classList.toggle("over",outs>budget);}
+    else{bt.textContent="설정 안 함";bf.style.width="0%";bp.classList.remove("over");}
+  }
 
 }
 
@@ -1881,15 +1953,73 @@ function analysisYM(){
  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
 }
 function changeAnalysisMonth(n){analysisMonthOffset+=n;renderAnalysis();}
+function refreshCategoryEditOptions(){
+ const type=document.getElementById("editCategoryType")?.value||"expense";
+ const sel=document.getElementById("editCategoryOld");
+ if(!sel)return;
+ sel.innerHTML=CATS[type].map(c=>`<option value="${bulkEsc(c)}">${bulkEsc(c)}</option>`).join("");
+}
 function renderCategoryManager(){
  const box=document.getElementById("categoryManager");
- if(!box) return;
+ if(!box)return;
  const renderType=(type,label)=>{
   const base=type==="income"?["급여","용돈","이자","환급","기타"]:["식비","교통","생활","쇼핑","의료","여가","기타"];
-  const custom=CATS[type].filter(c=>!base.includes(c));
-  return `<div style="margin-top:10px"><b>${label}</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${CATS[type].map(c=>`<span style="padding:6px 9px;background:#faf4eb;border:1px solid #e4d9ca;border-radius:999px;font-size:12px">${bulkEsc(c)}${custom.includes(c)?` <button type="button" onclick="removeCustomCategory('${type}','${bulkEsc(c).replace(/'/g,"&#39;")}')" style="border:0;background:none;padding:0 0 0 3px;cursor:pointer;color:#958b7d">×</button>`:""}</span>`).join("")}</div></div>`;
+  return `<div style="margin-top:12px"><b>${label}</b><div class="category-list">${CATS[type].map(c=>{
+    const custom=!base.includes(c);
+    return `<span class="category-pill">${bulkEsc(c)}${custom?`<button type="button" title="수정" onclick="startRenameCategory('${type}','${bulkEsc(c).replace(/'/g,"&#39;")}')">✎</button><button class="delete" type="button" title="삭제" onclick="removeCustomCategory('${type}','${bulkEsc(c).replace(/'/g,"&#39;")}')">×</button>`:""}</span>`;
+  }).join("")}</div></div>`;
  };
- box.innerHTML=renderType("expense","지출")+renderType("income","수입");
+ box.innerHTML=`
+  <div class="category-tools">
+    <div class="tool-row">
+      <select id="newCategoryType" aria-label="카테고리 종류"><option value="expense">지출</option><option value="income">수입</option></select>
+      <input id="newCategoryName" placeholder="새 카테고리 이름">
+      <button class="btn" type="button" onclick="addCustomCategory()">추가</button>
+    </div>
+    <div class="tool-row">
+      <select id="editCategoryType" onchange="refreshCategoryEditOptions()"><option value="expense">지출</option><option value="income">수입</option></select>
+      <select id="editCategoryOld" aria-label="수정할 카테고리"></select>
+      <input id="editCategoryName" placeholder="바꿀 이름">
+      <button class="btn" type="button" onclick="renameCategory()">수정</button>
+    </div>
+  </div>
+  ${renderType("expense","지출")}
+  ${renderType("income","수입")}`;
+ refreshCategoryEditOptions();
+}
+function startRenameCategory(type,name){
+ const typeSel=document.getElementById("editCategoryType");
+ if(typeSel)typeSel.value=type;
+ refreshCategoryEditOptions();
+ const oldSel=document.getElementById("editCategoryOld");
+ if(oldSel)oldSel.value=name;
+ const input=document.getElementById("editCategoryName");
+ if(input){input.value=name;input.focus();}
+}
+function renameCategory(){
+ const type=document.getElementById("editCategoryType")?.value||"expense";
+ const oldName=document.getElementById("editCategoryOld")?.value||"";
+ const input=document.getElementById("editCategoryName");
+ const newName=(input?.value||"").trim();
+ if(!oldName||!newName){alert("바꿀 카테고리 이름을 입력해주세요.");return;}
+ if(newName.length>20){alert("카테고리 이름은 20자 이내로 입력해주세요.");return;}
+ if(oldName===newName){alert("같은 이름이에요.");return;}
+ if(CATS[type].includes(newName)){alert("이미 있는 카테고리예요.");return;}
+ const idx=CATS[type].indexOf(oldName);
+ if(idx<0)return;
+ CATS[type][idx]=newName;
+ records.forEach(r=>{if(r.type===type && r.cat===oldName)r.cat=newName;});
+ recurring.forEach(r=>{if(r.kind==="incomeExpense" && r.type===type && r.cat===oldName)r.cat=newName;});
+ const rules=getAutoCategoryRules();
+ Object.keys(rules).forEach(k=>{if(rules[k]===oldName)rules[k]=newName;});
+ localStorage.setItem(AUTO_CAT_KEY,JSON.stringify(rules));
+ saveCustomCategories();
+ save();
+ buildChips();
+ if(typeof updateRecurringCategory === "function") updateRecurringCategory();
+ renderCategoryManager();
+ renderAnalysis();
+ alert("카테고리 이름을 수정했어요.");
 }
 function addCustomCategory(){
  const type=document.getElementById("newCategoryType")?.value||"expense";
@@ -1903,6 +2033,7 @@ function addCustomCategory(){
  if(input) input.value="";
  buildChips();
  if(typeof renderRecurringCategoryOptions === "function") renderRecurringCategoryOptions();
+ if(typeof updateRecurringCategory === "function") updateRecurringCategory();
  renderCategoryManager();
  renderAnalysis();
 }
@@ -1911,12 +2042,17 @@ function removeCustomCategory(type,name){
  if(base.includes(name)) return;
  if(records.some(r=>r.type===type && r.cat===name)){alert("이미 사용 중인 카테고리라 삭제할 수 없어요. 기존 내역을 먼저 다른 카테고리로 바꿔주세요.");return;}
  CATS[type]=CATS[type].filter(c=>c!==name);
+ const rules=getAutoCategoryRules();
+ Object.keys(rules).forEach(k=>{if(rules[k]===name)rules[k]="기타";});
+ localStorage.setItem(AUTO_CAT_KEY,JSON.stringify(rules));
  saveCustomCategories();
  buildChips();
  if(typeof renderRecurringCategoryOptions === "function") renderRecurringCategoryOptions();
+ if(typeof updateRecurringCategory === "function") updateRecurringCategory();
  renderCategoryManager();
  renderAnalysis();
 }
+
 function getCurrentTotalAssets(){
  const cash=accounts.reduce((sum,a)=>sum+Number(a.bal||0),0);
  const invested=assets.reduce((sum,a)=>sum+Number(a.value||0),0);
@@ -2038,237 +2174,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
-<script>
-// appended in separate script; uses existing app globals
-(function(){
-  const ACCESS_KEY='sbAccessToken';
-  const REFRESH_KEY='sbRefreshToken';
-  const EXPIRES_KEY='sbExpiresAt';
-  const USER_KEY='sbUser';
 
-  function cfg(){
-    const url=((document.getElementById('sbUrl')?.value || localStorage.getItem('sbUrl') || 'https://fegoelbzlomrthtpbafb.supabase.co')).trim().replace(/\/$/,'');
-    const key=((document.getElementById('sbKey')?.value || localStorage.getItem('sbKey') || '')).trim();
-    return {url,key};
-  }
-  function saveTokens(body){
-    localStorage.setItem(ACCESS_KEY, body.access_token || '');
-    localStorage.setItem(REFRESH_KEY, body.refresh_token || '');
-    if(body.expires_in) localStorage.setItem(EXPIRES_KEY, String(Date.now()+Math.max(30,Number(body.expires_in)-30)*1000));
-    if(body.user) localStorage.setItem(USER_KEY, JSON.stringify(body.user));
-  }
-  function clearTokens(){
-    localStorage.removeItem(ACCESS_KEY); localStorage.removeItem(REFRESH_KEY); localStorage.removeItem(EXPIRES_KEY); localStorage.removeItem(USER_KEY);
-  }
-  function savedUser(){
-    try{return JSON.parse(localStorage.getItem(USER_KEY)||'null')}catch(_){return null}
-  }
-  async function rawFetch(url, options){
-    try{
-      const r=await fetch(url, options);
-      let data=null; const txt=await r.text();
-      if(txt){try{data=JSON.parse(txt)}catch(_){data=txt}}
-      return {ok:r.ok,status:r.status,data};
-    }catch(e){
-      const err=new Error('SUPABASE_NETWORK_ERROR: '+(e?.message || String(e)));
-      err.name=e?.name || 'TypeError';
-      throw err;
-    }
-  }
-  async function refreshSession(){
-    const {url,key}=cfg();
-    const rt=localStorage.getItem(REFRESH_KEY)||'';
-    if(!url||!key||!rt) return false;
-    const r=await rawFetch(url+'/auth/v1/token?grant_type=refresh_token',{
-      method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:rt})
-    });
-    if(!r.ok) return false;
-    saveTokens(r.data); return true;
-  }
-  async function ensureToken(){
-    const at=localStorage.getItem(ACCESS_KEY)||'';
-    const exp=Number(localStorage.getItem(EXPIRES_KEY)||0);
-    if(at && exp && Date.now()<exp) return at;
-    if(at && !exp) return at;
-    if(await refreshSession()) return localStorage.getItem(ACCESS_KEY)||'';
-    return '';
-  }
-  async function api(path, {method='GET',body,auth=true,headers={}}={}){
-    const {url,key}=cfg();
-    if(!url||!key) throw new Error('Project URL 또는 Publishable Key가 없습니다.');
-    let token=auth ? await ensureToken() : '';
-    const h={apikey:key,'Content-Type':'application/json',...headers};
-    if(auth){
-      if(!token) throw new Error('LOGIN_REQUIRED');
-      h.Authorization='Bearer '+token;
-    }
-    let r=await rawFetch(url+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body)});
-    if(r.status===401 && auth){
-      if(await refreshSession()){
-        token=localStorage.getItem(ACCESS_KEY)||''; h.Authorization='Bearer '+token;
-        r=await rawFetch(url+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body)});
-      }
-    }
-    if(!r.ok){
-      const d=r.data||{};
-      const msg=d.message||d.msg||d.error_description||d.error||d.hint||('HTTP '+r.status);
-      const err=new Error(String(msg)); err.status=r.status; err.details=d; throw err;
-    }
-    return r.data;
-  }
-  function showErr(prefix,e){
-    const msg=e?.message||String(e);
-    if(msg.startsWith('SUPABASE_NETWORK_ERROR:')){
-      alert(prefix+'\n\nSupabase 서버에 접속하지 못했어요.\nProject URL과 Publishable Key를 확인해주세요.\n\n'+msg.replace('SUPABASE_NETWORK_ERROR: ',''));
-    }else if(msg==='LOGIN_REQUIRED'){
-      alert(prefix+'\n\n먼저 로그인해주세요.');
-    }else{
-      const tail=e?.status?`\n\nHTTP ${e.status}`:'';
-      alert(prefix+'\n\n'+msg+tail);
-    }
-  }
-
-  window.cloudLogin=async function(){
-    const url=((document.getElementById('sbUrl')?.value||'').trim().replace(/\/$/,'') || '');
-    const key=(document.getElementById('sbKey')?.value||'').trim();
-    const email=(document.getElementById('sbEmail')?.value||'').trim();
-    const password=document.getElementById('sbPassword')?.value||'';
-    if(!url||!key){alert('Supabase Project URL과 Publishable Key를 입력해주세요.');return;}
-    if(!email||!password){alert('이메일과 비밀번호를 입력해주세요.');return;}
-    localStorage.setItem('sbUrl',url); localStorage.setItem('sbKey',key);
-    try{
-      const r=await rawFetch(url+'/auth/v1/token?grant_type=password',{
-        method:'POST',
-        headers:{apikey:key,'Content-Type':'application/json'},
-        body:JSON.stringify({email,password})
-      });
-      if(!r.ok){
-        const d=r.data||{}; const msg=d.error_description||d.msg||d.message||d.error||('HTTP '+r.status);
-        const code=d.error_code||d.code||'';
-        alert('로그인 실패\n\n'+msg+(code?'\n\n코드: '+code:'')); return;
-      }
-      if(!r.data?.access_token || !r.data?.refresh_token){
-        alert('로그인은 처리됐지만 세션 정보가 오지 않았어요.'); return;
-      }
-      saveTokens(r.data);
-      document.getElementById('sbPassword').value='';
-      cloudStatus(' 로그인됨');
-      const user=r.data.user || savedUser();
-      const el=document.getElementById('cloudUser'); if(el && user) el.textContent='로그인: '+(user.email||email);
-      if(householdId) { try{await window.cloudPull();}catch(e){console.error(e)} }
-      alert('로그인 성공! 🎉');
-    }catch(e){
-      console.error('REST AUTH ERROR',e);
-      showErr('로그인 중 오류가 발생했어요.',e);
-    }
-  };
-
-  window.cloudLogout=async function(){
-    try{ const {url,key}=cfg(); const at=localStorage.getItem(ACCESS_KEY)||''; if(url&&key&&at){await rawFetch(url+'/auth/v1/logout',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+at}});} }
-    catch(e){console.error(e)}
-    clearTokens(); householdId=''; localStorage.removeItem('householdId');
-    const hi=document.getElementById('householdInfo'); if(hi) hi.textContent='';
-    const cu=document.getElementById('cloudUser'); if(cu) cu.textContent='로그인하지 않았어요.';
-    cloudStatus(' 로그아웃됨');
-  };
-
-  window.updateCloudUser=async function(){
-    const el=document.getElementById('cloudUser');
-    try{
-      const u=savedUser();
-      if(u&&el){el.textContent='로그인: '+(u.email||''); return;}
-      const data=await api('/auth/v1/user',{method:'GET'});
-      if(data&&el){el.textContent='로그인: '+(data.email||''); localStorage.setItem(USER_KEY,JSON.stringify(data));}
-    }catch(_){ if(el) el.textContent='로그인하지 않았어요.'; }
-  };
-
-  window.cloudConnect=async function(){
-    const url=(document.getElementById('sbUrl')?.value||'').trim().replace(/\/$/,'');
-    const key=(document.getElementById('sbKey')?.value||'').trim();
-    if(!url||!key){alert('Project URL과 Publishable Key를 입력해주세요.');return;}
-    localStorage.setItem('sbUrl',url); localStorage.setItem('sbKey',key);
-    try{
-      const token=await ensureToken();
-      cloudStatus(token?' 연결됨 · 로그인 상태':' 연결됨 · 로그인 필요');
-      if(token){await window.updateCloudUser(); if(householdId) await window.cloudPull();}
-    }catch(e){showErr('Supabase 연결 실패',e)}
-  };
-
-  window.cloudCreateHousehold=async function(){
-    try{
-      const data=await api('/rest/v1/rpc/create_household',{method:'POST',body:{p_name:'가계쀼'}});
-      let id=(typeof data==='string'?data:(data?.id||data?.household_id||data));
-      if(!id) throw new Error('가계부 ID를 받지 못했어요. Supabase 공동사용 SQL을 확인해주세요.');
-      id=String(id).replace(/^"|"$/g,'');
-      householdId=id; localStorage.setItem('householdId',id);
-      const input=document.getElementById('householdIdInput'); if(input) input.value=id;
-      const info=document.getElementById('householdInfo'); if(info) info.textContent='가계부가 만들어졌어요. 이 ID를 두 번째 사용자에게 보내주세요.';
-      await window.cloudPush();
-      alert('공동 가계부가 만들어졌어요!\n\n가계부 ID:\n'+id+'\n\n두 번째 사용자는 이 ID를 입력하면 됩니다.');
-    }catch(e){console.error(e);showErr('가계부 만들기 실패',e)}
-  };
-
-  window.cloudJoinHousehold=async function(){
-    const id=(document.getElementById('householdIdInput')?.value||'').trim();
-    if(!id){alert('가계부 ID를 입력해주세요.');return;}
-    try{
-      await api('/rest/v1/rpc/join_household',{method:'POST',body:{p_household_id:id}});
-      householdId=id; localStorage.setItem('householdId',id);
-      const info=document.getElementById('householdInfo'); if(info) info.textContent='공유 가계부에 연결됐어요.';
-      await window.cloudPull();
-      alert('공유 가계부에 참여했어요! 🎉');
-    }catch(e){console.error(e);showErr('가계부 참여 실패',e)}
-  };
-
-  function payload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules()};}
-  window.cloudPush=async function(){
-    if(cloudSyncing||cloudLoading||!householdId)return;
-    cloudSyncing=true;
-    try{
-      await api('/rest/v1/household_data?on_conflict=household_id',{method:'POST',body:{household_id:householdId,data:payload(),updated_at:new Date().toISOString()},headers:{Prefer:'resolution=merge-duplicates,return=minimal'}});
-      cloudStatus(' 저장됨 · '+new Date().toLocaleTimeString());
-    }catch(e){console.error('cloudPush',e); cloudStatus(' 저장 실패 · '+(e?.message||'설정을 확인해주세요'));}
-    finally{cloudSyncing=false;}
-  };
-
-  window.cloudPull=async function(){
-    if(cloudLoading)return;
-    if(!householdId){alert('먼저 가계부를 만들거나 참여해주세요.');return;}
-    cloudLoading=true;
-    try{
-      const rows=await api('/rest/v1/household_data?select=data&household_id=eq.'+encodeURIComponent(householdId)+'&limit=1',{method:'GET'});
-      if(!Array.isArray(rows)||!rows.length||!rows[0]?.data){
-        await window.cloudPush();
-        return;
-      }
-      const d=rows[0].data;
-      records=Array.isArray(d.records)?d.records:[];
-      accounts=Array.isArray(d.accounts)?d.accounts:[];
-      recurring=Array.isArray(d.recurring)?d.recurring:[];
-      assets=Array.isArray(d.assets)?d.assets:[];
-      assetRecurring=Array.isArray(d.assetRecurring)?d.assetRecurring:[];
-      assetReturns=Array.isArray(d.assetReturns)?d.assetReturns:[];
-      assetGoal=d.assetGoal||{target:0};
-      assetGoals=d.assetGoals||{'2027':0,'2028':0,'2029':0};
-      monthlyBudgets=d.monthlyBudgets||{};
-      if(d.autoCategoryRules)localStorage.setItem(AUTO_CAT_KEY,JSON.stringify(d.autoCategoryRules));
-      normalizeRecords(); normalizeData(); localSaveOnly();
-      buildChips(); buildAcctSelect(); renderAssets(); render();
-      cloudStatus(' 클라우드 데이터를 불러왔어요.');
-    }catch(e){console.error('cloudPull',e);showErr('클라우드 불러오기 실패',e)}
-    finally{cloudLoading=false;}
-  };
-
-  async function restore(){
-    const token=await ensureToken();
-    if(!token)return;
-    cloudStatus(' 연결됨 · 로그인 상태');
-    await window.updateCloudUser();
-    if(householdId) await window.cloudPull();
-  }
-  setTimeout(()=>restore().catch(e=>console.error('REST RESTORE',e)),300);
-})();
-
-</script>
 </body>
 </html>
