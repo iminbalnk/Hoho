@@ -880,12 +880,12 @@ function save(){
 const SUPABASE_URL = "https://fegoelbzlomrthtpbafb.supabase.co";
 // 최초 배포 전에 아래 한 줄에 Supabase의 Publishable Key를 한 번만 넣어주세요.
 // 기존 휴대폰에 저장된 키가 있으면 그 값을 우선 사용합니다.
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_JDChuQvxGOaAVVqaYzeByw_срХАЕЕгЕ";
+const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_JDChuQvxGOaAVVqaYzeByw_cpXAEErE";
 let authMode = "login";
 
 function cloudCfg(){
  const saved=localStorage.getItem("sbKey")||"";
- const key=(saved && saved!="sb_publishable_JDChuQvxGOaAVVqaYzeByw_срХАЕЕгЕ")?saved:SUPABASE_PUBLISHABLE_KEY;
+ const key=(saved && saved!="sb_publishable_JDChuQvxGOaAVVqaYzeByw_cpXAEErE")?saved:SUPABASE_PUBLISHABLE_KEY;
  return {url:SUPABASE_URL, key};
 }
 function cloudStatus(msg){
