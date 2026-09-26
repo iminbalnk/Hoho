@@ -297,6 +297,141 @@ box-shadow:none!important;
   .goal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
   .goal-grid>div{min-width:0}
   @media(max-width:640px){.goal-grid{grid-template-columns:1fr}}
+
+/* ===== 가계쀼 new app-style theme ===== */
+:root{
+  --bg:#211713;
+  --cream:#211713;
+  --card:#2b1f1a;
+  --soft:#36261f;
+  --line:#4b3529;
+  --text:#f4eee6;
+  --sub:#bcaea3;
+  --green:#163f32;
+  --green2:#285c49;
+  --green-soft:#203f35;
+  --plus:#b7d3b8;
+  --minus:#d9937f;
+  --move:#b8cfbf;
+  --wood:#c8a77b;
+  --shadow:0 10px 30px rgba(0,0,0,.22);
+}
+html{background:var(--bg);}
+body,
+body.dark{
+  background:var(--bg)!important;
+  color:var(--text)!important;
+  max-width:560px!important;
+  padding:18px 14px 100px!important;
+  text-align:center!important;
+}
+.head{justify-content:center!important;margin:2px 0 20px!important;}
+#title{font-family:'MaruBuriBold','MaruBuri',serif!important;color:#e8d4b8!important;font-size:25px!important;letter-spacing:-.8px;}
+h2,h3{color:#e8d4b8!important;}
+.card,.bulk-card{
+  background:var(--card)!important;
+  border:1px solid var(--line)!important;
+  border-radius:22px!important;
+  box-shadow:var(--shadow)!important;
+  text-align:center!important;
+}
+.card h3{margin-bottom:10px!important;}
+label,.hint,.muted,.section-note,.wedding-line,.account-no,.acct-use{color:var(--sub)!important;text-align:center!important;}
+.section-title{justify-content:center!important;text-align:center!important;}
+.section-title>div{text-align:center!important;}
+.section-kicker{color:#9db8a8!important;letter-spacing:2px!important;text-align:center!important;}
+input,select,textarea{
+  background:#1b1411!important;
+  border:1px solid #513a2d!important;
+  color:var(--text)!important;
+  text-align:center!important;
+  border-radius:14px!important;
+}
+input:focus,select:focus,textarea:focus{border-color:#769a85!important;outline:none!important;box-shadow:0 0 0 3px rgba(118,154,133,.12)!important;}
+input::placeholder,textarea::placeholder{color:#806f63!important;}
+.btn{
+  background:var(--green)!important;
+  color:#f4eee6!important;
+  border:1px solid #2d614f!important;
+  border-radius:14px!important;
+  min-height:44px;
+  font-family:'MaruBuriBold','MaruBuri',serif!important;
+}
+.btn.sub,.btn.secondary{background:#392820!important;color:#dbcbbd!important;border-color:#574033!important;}
+.btn:hover{filter:brightness(1.08);}
+.hero{
+  background:#173c30!important;
+  border:1px solid #2c5c4b!important;
+  border-radius:25px!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.25)!important;
+  text-align:center!important;
+}
+.hero .eyebrow{color:#a8c2b4!important;letter-spacing:2px;}
+.hero .balance{color:#f4eadf!important;font-size:32px!important;}
+.hero-sub{justify-content:center!important;}
+.hero-stat{background:#224b3d!important;border:1px solid #315e4e!important;text-align:center!important;}
+.hero-stat .slabel{color:#b4c8bd!important;}
+.hero-stat .sval{color:#f0e9e1!important;}
+.quick{gap:10px!important;}
+.quick button{
+  background:#2b1f1a!important;
+  border:1px solid var(--line)!important;
+  border-radius:18px!important;
+  color:var(--text)!important;
+  text-align:center!important;
+  min-height:82px;
+}
+.quick button b,.quick button span{display:block;text-align:center!important;}
+.qico{display:none!important;}
+.month-nav{justify-content:center!important;gap:22px;}
+.month-nav button{background:#203f35!important;color:#c8d8cf!important;border:1px solid #31584a!important;}
+.month-title{color:#eadbc9!important;}
+.budget-head{justify-content:center!important;gap:12px;}
+.budget-head b{color:#d8c4ae;}
+.budget-val{color:#aeb9b1!important;}
+.progress{background:#3a2b24!important;}
+.progress>div{background:#668f78!important;}
+.subtabs{background:#30231d!important;border:1px solid #49342a!important;border-radius:16px!important;}
+.subtabs button{color:#a9988c!important;text-align:center!important;}
+.subtabs button.active{background:#173c30!important;color:#e5eee8!important;box-shadow:none!important;border:1px solid #2b5b4a!important;}
+.toggle{background:#30231d!important;justify-content:center!important;border-radius:15px!important;}
+.toggle button{color:#a9988c!important;}
+.toggle button.on{background:#173c30!important;color:#e5eee8!important;}
+.chips{justify-content:center!important;}
+.chip{background:#382820!important;color:#cdbfb3!important;border-color:#533c30!important;}
+.chip.on{background:#315f4e!important;color:#f3eee8!important;border-color:#477761!important;}
+.pill{background:#203f35!important;color:#bdd0c5!important;border-color:#315a4b!important;}
+.acct-box,.sum-item,.analysis-summary>div,.wedding-box{
+  background:#2b1f1a!important;border-color:#4b3529!important;color:var(--text)!important;box-shadow:none!important;text-align:center!important;
+}
+.acct-name,.acct-bal{color:#e8d8c8!important;}
+.acct-bal{font-size:20px!important;}
+.del{color:#d9937f!important;}
+.analysis-line{justify-content:center!important;flex-wrap:wrap;}
+.analysis-total{text-align:center!important;border-top-color:#4b3529!important;}
+.bar{background:#3b2b24!important;}
+.bar i{background:#73947f!important;}
+.navbar{
+  background:#211713!important;
+  border-top:1px solid #49342a!important;
+  box-shadow:0 -8px 24px rgba(0,0,0,.18)!important;
+  border-radius:18px 18px 0 0;
+}
+.navbar button{color:#9f8e82!important;text-align:center!important;}
+.navbar button.on{color:#bdd2c6!important;background:#173c30!important;border-radius:14px!important;margin:7px 5px!important;padding:7px 0!important;}
+.navbar .ico{display:none!important;}
+.modal{background:#2b1f1a!important;border:1px solid #4b3529!important;text-align:center!important;}
+.modal-bg{background:rgba(12,8,6,.76)!important;}
+#bulkPreview,.bulk-preview{text-align:center!important;}
+.bulk-row{grid-template-columns:1fr!important;text-align:center!important;}
+.bulk-date,.bulk-desc,.bulk-cat{ text-align:center!important; }
+.return-tabs{background:#30231d!important;}
+.return-tabs button.active{background:#173c30!important;color:#e5eee8!important;}
+/* 설정/클라우드도 가운데 정렬 */
+#tab-settings .grid2,#tab-settings .row{justify-content:center!important;}
+#tab-settings .card p{max-width:430px;margin-left:auto;margin-right:auto;}
+/* 입력 탭에서만 대시보드(잔액/예산)가 보이도록 이동했으므로 다른 탭에는 노출되지 않습니다. */
+
 </style>
 </head>
 <body>
@@ -305,6 +440,8 @@ box-shadow:none!important;
  <h2 id="title">가계쀼</h2>
 </div>
 
+<!-- ===== 탭1: 입력 ===== -->
+<div id="tab-input">
 <div id="dashboard">
   <div class="hero">
     <div class="eyebrow" id="heroMonth">26.09</div>
@@ -329,8 +466,6 @@ box-shadow:none!important;
   </div>
 </div>
 
-<!-- ===== 탭1: 입력 ===== -->
-<div id="tab-input">
  <div class="subtabs">
    <button class="active" onclick="showInputSubtab('paste',this)"> 붙여넣기</button>
    <button onclick="showInputSubtab('manual',this)">️ 직접입력</button>
@@ -1902,6 +2037,238 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('./sw.js?v=3').catch(() => {});
   });
 }
+</script>
+<script>
+// appended in separate script; uses existing app globals
+(function(){
+  const ACCESS_KEY='sbAccessToken';
+  const REFRESH_KEY='sbRefreshToken';
+  const EXPIRES_KEY='sbExpiresAt';
+  const USER_KEY='sbUser';
+
+  function cfg(){
+    const url=((document.getElementById('sbUrl')?.value || localStorage.getItem('sbUrl') || 'https://fegoelbzlomrthtpbafb.supabase.co')).trim().replace(/\/$/,'');
+    const key=((document.getElementById('sbKey')?.value || localStorage.getItem('sbKey') || '')).trim();
+    return {url,key};
+  }
+  function saveTokens(body){
+    localStorage.setItem(ACCESS_KEY, body.access_token || '');
+    localStorage.setItem(REFRESH_KEY, body.refresh_token || '');
+    if(body.expires_in) localStorage.setItem(EXPIRES_KEY, String(Date.now()+Math.max(30,Number(body.expires_in)-30)*1000));
+    if(body.user) localStorage.setItem(USER_KEY, JSON.stringify(body.user));
+  }
+  function clearTokens(){
+    localStorage.removeItem(ACCESS_KEY); localStorage.removeItem(REFRESH_KEY); localStorage.removeItem(EXPIRES_KEY); localStorage.removeItem(USER_KEY);
+  }
+  function savedUser(){
+    try{return JSON.parse(localStorage.getItem(USER_KEY)||'null')}catch(_){return null}
+  }
+  async function rawFetch(url, options){
+    try{
+      const r=await fetch(url, options);
+      let data=null; const txt=await r.text();
+      if(txt){try{data=JSON.parse(txt)}catch(_){data=txt}}
+      return {ok:r.ok,status:r.status,data};
+    }catch(e){
+      const err=new Error('SUPABASE_NETWORK_ERROR: '+(e?.message || String(e)));
+      err.name=e?.name || 'TypeError';
+      throw err;
+    }
+  }
+  async function refreshSession(){
+    const {url,key}=cfg();
+    const rt=localStorage.getItem(REFRESH_KEY)||'';
+    if(!url||!key||!rt) return false;
+    const r=await rawFetch(url+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',headers:{apikey:key,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:rt})
+    });
+    if(!r.ok) return false;
+    saveTokens(r.data); return true;
+  }
+  async function ensureToken(){
+    const at=localStorage.getItem(ACCESS_KEY)||'';
+    const exp=Number(localStorage.getItem(EXPIRES_KEY)||0);
+    if(at && exp && Date.now()<exp) return at;
+    if(at && !exp) return at;
+    if(await refreshSession()) return localStorage.getItem(ACCESS_KEY)||'';
+    return '';
+  }
+  async function api(path, {method='GET',body,auth=true,headers={}}={}){
+    const {url,key}=cfg();
+    if(!url||!key) throw new Error('Project URL 또는 Publishable Key가 없습니다.');
+    let token=auth ? await ensureToken() : '';
+    const h={apikey:key,'Content-Type':'application/json',...headers};
+    if(auth){
+      if(!token) throw new Error('LOGIN_REQUIRED');
+      h.Authorization='Bearer '+token;
+    }
+    let r=await rawFetch(url+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body)});
+    if(r.status===401 && auth){
+      if(await refreshSession()){
+        token=localStorage.getItem(ACCESS_KEY)||''; h.Authorization='Bearer '+token;
+        r=await rawFetch(url+path,{method,headers:h,body:body===undefined?undefined:JSON.stringify(body)});
+      }
+    }
+    if(!r.ok){
+      const d=r.data||{};
+      const msg=d.message||d.msg||d.error_description||d.error||d.hint||('HTTP '+r.status);
+      const err=new Error(String(msg)); err.status=r.status; err.details=d; throw err;
+    }
+    return r.data;
+  }
+  function showErr(prefix,e){
+    const msg=e?.message||String(e);
+    if(msg.startsWith('SUPABASE_NETWORK_ERROR:')){
+      alert(prefix+'\n\nSupabase 서버에 접속하지 못했어요.\nProject URL과 Publishable Key를 확인해주세요.\n\n'+msg.replace('SUPABASE_NETWORK_ERROR: ',''));
+    }else if(msg==='LOGIN_REQUIRED'){
+      alert(prefix+'\n\n먼저 로그인해주세요.');
+    }else{
+      const tail=e?.status?`\n\nHTTP ${e.status}`:'';
+      alert(prefix+'\n\n'+msg+tail);
+    }
+  }
+
+  window.cloudLogin=async function(){
+    const url=((document.getElementById('sbUrl')?.value||'').trim().replace(/\/$/,'') || '');
+    const key=(document.getElementById('sbKey')?.value||'').trim();
+    const email=(document.getElementById('sbEmail')?.value||'').trim();
+    const password=document.getElementById('sbPassword')?.value||'';
+    if(!url||!key){alert('Supabase Project URL과 Publishable Key를 입력해주세요.');return;}
+    if(!email||!password){alert('이메일과 비밀번호를 입력해주세요.');return;}
+    localStorage.setItem('sbUrl',url); localStorage.setItem('sbKey',key);
+    try{
+      const r=await rawFetch(url+'/auth/v1/token?grant_type=password',{
+        method:'POST',
+        headers:{apikey:key,'Content-Type':'application/json'},
+        body:JSON.stringify({email,password})
+      });
+      if(!r.ok){
+        const d=r.data||{}; const msg=d.error_description||d.msg||d.message||d.error||('HTTP '+r.status);
+        const code=d.error_code||d.code||'';
+        alert('로그인 실패\n\n'+msg+(code?'\n\n코드: '+code:'')); return;
+      }
+      if(!r.data?.access_token || !r.data?.refresh_token){
+        alert('로그인은 처리됐지만 세션 정보가 오지 않았어요.'); return;
+      }
+      saveTokens(r.data);
+      document.getElementById('sbPassword').value='';
+      cloudStatus(' 로그인됨');
+      const user=r.data.user || savedUser();
+      const el=document.getElementById('cloudUser'); if(el && user) el.textContent='로그인: '+(user.email||email);
+      if(householdId) { try{await window.cloudPull();}catch(e){console.error(e)} }
+      alert('로그인 성공! 🎉');
+    }catch(e){
+      console.error('REST AUTH ERROR',e);
+      showErr('로그인 중 오류가 발생했어요.',e);
+    }
+  };
+
+  window.cloudLogout=async function(){
+    try{ const {url,key}=cfg(); const at=localStorage.getItem(ACCESS_KEY)||''; if(url&&key&&at){await rawFetch(url+'/auth/v1/logout',{method:'POST',headers:{apikey:key,Authorization:'Bearer '+at}});} }
+    catch(e){console.error(e)}
+    clearTokens(); householdId=''; localStorage.removeItem('householdId');
+    const hi=document.getElementById('householdInfo'); if(hi) hi.textContent='';
+    const cu=document.getElementById('cloudUser'); if(cu) cu.textContent='로그인하지 않았어요.';
+    cloudStatus(' 로그아웃됨');
+  };
+
+  window.updateCloudUser=async function(){
+    const el=document.getElementById('cloudUser');
+    try{
+      const u=savedUser();
+      if(u&&el){el.textContent='로그인: '+(u.email||''); return;}
+      const data=await api('/auth/v1/user',{method:'GET'});
+      if(data&&el){el.textContent='로그인: '+(data.email||''); localStorage.setItem(USER_KEY,JSON.stringify(data));}
+    }catch(_){ if(el) el.textContent='로그인하지 않았어요.'; }
+  };
+
+  window.cloudConnect=async function(){
+    const url=(document.getElementById('sbUrl')?.value||'').trim().replace(/\/$/,'');
+    const key=(document.getElementById('sbKey')?.value||'').trim();
+    if(!url||!key){alert('Project URL과 Publishable Key를 입력해주세요.');return;}
+    localStorage.setItem('sbUrl',url); localStorage.setItem('sbKey',key);
+    try{
+      const token=await ensureToken();
+      cloudStatus(token?' 연결됨 · 로그인 상태':' 연결됨 · 로그인 필요');
+      if(token){await window.updateCloudUser(); if(householdId) await window.cloudPull();}
+    }catch(e){showErr('Supabase 연결 실패',e)}
+  };
+
+  window.cloudCreateHousehold=async function(){
+    try{
+      const data=await api('/rest/v1/rpc/create_household',{method:'POST',body:{p_name:'가계쀼'}});
+      let id=(typeof data==='string'?data:(data?.id||data?.household_id||data));
+      if(!id) throw new Error('가계부 ID를 받지 못했어요. Supabase 공동사용 SQL을 확인해주세요.');
+      id=String(id).replace(/^"|"$/g,'');
+      householdId=id; localStorage.setItem('householdId',id);
+      const input=document.getElementById('householdIdInput'); if(input) input.value=id;
+      const info=document.getElementById('householdInfo'); if(info) info.textContent='가계부가 만들어졌어요. 이 ID를 두 번째 사용자에게 보내주세요.';
+      await window.cloudPush();
+      alert('공동 가계부가 만들어졌어요!\n\n가계부 ID:\n'+id+'\n\n두 번째 사용자는 이 ID를 입력하면 됩니다.');
+    }catch(e){console.error(e);showErr('가계부 만들기 실패',e)}
+  };
+
+  window.cloudJoinHousehold=async function(){
+    const id=(document.getElementById('householdIdInput')?.value||'').trim();
+    if(!id){alert('가계부 ID를 입력해주세요.');return;}
+    try{
+      await api('/rest/v1/rpc/join_household',{method:'POST',body:{p_household_id:id}});
+      householdId=id; localStorage.setItem('householdId',id);
+      const info=document.getElementById('householdInfo'); if(info) info.textContent='공유 가계부에 연결됐어요.';
+      await window.cloudPull();
+      alert('공유 가계부에 참여했어요! 🎉');
+    }catch(e){console.error(e);showErr('가계부 참여 실패',e)}
+  };
+
+  function payload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules()};}
+  window.cloudPush=async function(){
+    if(cloudSyncing||cloudLoading||!householdId)return;
+    cloudSyncing=true;
+    try{
+      await api('/rest/v1/household_data?on_conflict=household_id',{method:'POST',body:{household_id:householdId,data:payload(),updated_at:new Date().toISOString()},headers:{Prefer:'resolution=merge-duplicates,return=minimal'}});
+      cloudStatus(' 저장됨 · '+new Date().toLocaleTimeString());
+    }catch(e){console.error('cloudPush',e); cloudStatus(' 저장 실패 · '+(e?.message||'설정을 확인해주세요'));}
+    finally{cloudSyncing=false;}
+  };
+
+  window.cloudPull=async function(){
+    if(cloudLoading)return;
+    if(!householdId){alert('먼저 가계부를 만들거나 참여해주세요.');return;}
+    cloudLoading=true;
+    try{
+      const rows=await api('/rest/v1/household_data?select=data&household_id=eq.'+encodeURIComponent(householdId)+'&limit=1',{method:'GET'});
+      if(!Array.isArray(rows)||!rows.length||!rows[0]?.data){
+        await window.cloudPush();
+        return;
+      }
+      const d=rows[0].data;
+      records=Array.isArray(d.records)?d.records:[];
+      accounts=Array.isArray(d.accounts)?d.accounts:[];
+      recurring=Array.isArray(d.recurring)?d.recurring:[];
+      assets=Array.isArray(d.assets)?d.assets:[];
+      assetRecurring=Array.isArray(d.assetRecurring)?d.assetRecurring:[];
+      assetReturns=Array.isArray(d.assetReturns)?d.assetReturns:[];
+      assetGoal=d.assetGoal||{target:0};
+      assetGoals=d.assetGoals||{'2027':0,'2028':0,'2029':0};
+      monthlyBudgets=d.monthlyBudgets||{};
+      if(d.autoCategoryRules)localStorage.setItem(AUTO_CAT_KEY,JSON.stringify(d.autoCategoryRules));
+      normalizeRecords(); normalizeData(); localSaveOnly();
+      buildChips(); buildAcctSelect(); renderAssets(); render();
+      cloudStatus(' 클라우드 데이터를 불러왔어요.');
+    }catch(e){console.error('cloudPull',e);showErr('클라우드 불러오기 실패',e)}
+    finally{cloudLoading=false;}
+  };
+
+  async function restore(){
+    const token=await ensureToken();
+    if(!token)return;
+    cloudStatus(' 연결됨 · 로그인 상태');
+    await window.updateCloudUser();
+    if(householdId) await window.cloudPull();
+  }
+  setTimeout(()=>restore().catch(e=>console.error('REST RESTORE',e)),300);
+})();
+
 </script>
 </body>
 </html>
