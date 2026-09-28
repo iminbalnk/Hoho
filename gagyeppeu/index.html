@@ -970,16 +970,56 @@ function cloudCfg(){
 function cloudStatus(msg){
  const el=document.getElementById("cloudStatus"); if(el) el.textContent=msg;
 }
+let __gagyeppeuSupabaseLoading = null;
+function ensureSupabaseLoaded(){
+ return new Promise((resolve)=>{
+   if(window.supabase){ resolve(true); return; }
+   if(__gagyeppeuSupabaseLoading){ __gagyeppeuSupabaseLoading.then(resolve); return; }
+   __gagyeppeuSupabaseLoading = new Promise((done)=>{
+     const existing=document.querySelector('script[data-gagyeppeu-supabase]');
+     if(existing){
+       existing.addEventListener('load',()=>done(!!window.supabase),{once:true});
+       existing.addEventListener('error',()=>done(false),{once:true});
+       setTimeout(()=>done(!!window.supabase),5000);
+       return;
+     }
+     const script=document.createElement('script');
+     script.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+     script.async=false;
+     script.dataset.gagyeppeuSupabase='1';
+     script.onload=()=>done(!!window.supabase);
+     script.onerror=()=>{
+       const fallback=document.createElement('script');
+       fallback.src='https://unpkg.com/@supabase/supabase-js@2';
+       fallback.async=false;
+       fallback.onload=()=>done(!!window.supabase);
+       fallback.onerror=()=>done(false);
+       document.head.appendChild(fallback);
+     };
+     document.head.appendChild(script);
+   });
+   __gagyeppeuSupabaseLoading.then(resolve);
+ });
+}
 function setCloudClient(){
  const c=cloudCfg();
  if(!c.url || !c.key || c.key.indexOf("__PASTE_")===0) return false;
- if(!window.supabase){
-   return false;
- }
+ if(!window.supabase) return false;
  try{
-   window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+   if(!window.__gagyeppeuSupabaseClient){
+     window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+   }
    return true;
  }catch(e){ console.error("SUPABASE CLIENT ERROR:",e); cloudStatus("Supabase 설정을 확인해주세요."); return false; }
+}
+async function ensureCloudClient(){
+ const c=cloudCfg();
+ if(!c.url || !c.key || c.key.indexOf("__PASTE_")===0) return false;
+ if(!window.supabase){
+   const loaded=await ensureSupabaseLoaded();
+   if(!loaded) return false;
+ }
+ return setCloudClient();
 }
 function setAuthMode(mode){
  authMode=mode;
@@ -994,7 +1034,7 @@ async function authSubmit(){
  return cloudLogin();
 }
 async function cloudConnect(){
- if(!setCloudClient()){alert("앱의 Supabase 설정이 아직 완료되지 않았어요. Publishable Key를 한 번만 앱에 넣어주세요.");return;}
+ if(!(await ensureCloudClient())){alert("Supabase 연결을 시작하지 못했어요. 인터넷 연결을 확인한 뒤 다시 눌러주세요.");return;}
  cloudStatus("연결됨 · 로그인 필요");
  try{await updateCloudUser();}catch(e){}
 }
@@ -1033,8 +1073,8 @@ async function cloudLogin(){
   const email=(document.getElementById("sbEmail")?.value||"").trim();
   const password=document.getElementById("sbPassword")?.value||"";
   if(!email||!password){alert("이메일과 비밀번호를 입력해주세요.");return;}
-  if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){
-   alert("Supabase 연결을 시작하지 못했어요. 페이지를 새로고침해 주세요.");
+  if(!(await ensureCloudClient())){
+   alert("Supabase 연결을 시작하지 못했어요. 인터넷 연결을 확인한 뒤 다시 눌러주세요.");
    return;
   }
 
