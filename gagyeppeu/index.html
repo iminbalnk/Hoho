@@ -541,7 +541,7 @@ body,input,select,textarea,button,h1,h2,h3,h4,h5,h6,.btn,.navbar button,.chip,la
 }
 
 .direct-memo{color:#fff;font-size:18px;font-weight:700;line-height:1.35;margin-top:0}.direct-cat{display:block}.direct-expense-list{}
-.expense-history-row{display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(70px,.7fr) auto;gap:12px;align-items:center;text-align:left!important}.expense-history-row .expense-content{min-width:0;text-align:left!important}.expense-history-row .expense-category{font-size:14px;color:#e9e1d6;font-weight:500;text-align:left!important;white-space:nowrap}.expense-history-row .expense-meta{font-size:12px;color:var(--sub);margin-top:4px}.expense-history-row .amt-minus{font-size:16px;font-weight:700;white-space:nowrap}.expense-history-row .direct-memo{color:#fff;font-size:18px;font-weight:700;white-space:normal;word-break:keep-all}.expense-history-row .direct-memo.empty-memo{font-weight:500;color:#fff}.btn.tiny{padding:5px 8px;font-size:11px;border-radius:8px}
+.expense-history-row{display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(70px,.7fr) auto;gap:12px;align-items:center;text-align:left!important}.expense-history-row .expense-content{min-width:0;text-align:left!important}.expense-history-row .expense-category{font-size:14px;color:#e9e1d6;font-weight:500;text-align:left!important;white-space:nowrap}.expense-payment{font-size:11px;color:var(--sub);margin-top:4px;font-weight:500}.expense-history-row .expense-meta{font-size:12px;color:var(--sub);margin-top:4px}.expense-history-row .amt-minus{font-size:16px;font-weight:700;white-space:nowrap}.expense-history-row .direct-memo{color:#fff;font-size:18px;font-weight:700;white-space:normal;word-break:keep-all}.expense-history-row .direct-memo.empty-memo{font-weight:500;color:#fff}.btn.tiny{padding:5px 8px;font-size:11px;border-radius:8px}
 @media(max-width:420px){.expense-history-row{grid-template-columns:minmax(0,1.5fr) 62px auto;gap:8px}.expense-history-row .direct-memo{font-size:17px}.expense-history-row .expense-category{font-size:13px}.expense-history-row .amt-minus{font-size:15px}}
 
 /* 분석 그래프 */
@@ -618,6 +618,7 @@ html, body, input, select, textarea, button, option {
    </div>
    <label>날짜</label><input type="date" id="inDate">
    <label>통장 / 카드</label><select id="inAcct"></select>
+   <label>결제수단</label><select id="inPayment"><option value="카드">카드</option><option value="계좌이체">계좌이체</option><option value="현금">현금</option></select>
    <label>카테고리</label><div class="chips" id="catChips"></div>
    <label>금액</label><input type="number" id="inAmt" placeholder="숫자만 입력">
    <label>메모 (선택)</label><input type="text" id="inMemo" placeholder="예: 점심값">
@@ -677,7 +678,11 @@ html, body, input, select, textarea, button, option {
 <div id="tab-expenses" class="hide">
  <div class="card">
   <div class="section-title">
-   <div><div class="section-kicker">EXPENSES</div><h3>지출내역</h3></div>
+   <div><div class="section-kicker">TRANSACTIONS</div><h3 id="transactionTabTitle">지출내역</h3></div>
+  </div>
+  <div class="subtabs transaction-tabs">
+   <button class="active" onclick="showTransactionType('expense',this)">지출</button>
+   <button onclick="showTransactionType('income',this)">수입</button>
   </div>
   <div id="expenseHistoryList"></div>
  </div>
@@ -878,6 +883,7 @@ function normalizeRecords(){
     const amt=Number(r.amt!=null?r.amt:r.amount);
     return {...r,id:r.id??(Date.now()+i),date:r.date||(()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;})(),amt:Number.isFinite(amt)?Math.abs(amt):0,
       cat:r.cat||r.category||(r.type==="income"?"기타":"기타"),acctId,
+      payment:r.payment||r.payMethod||r.method||(r.type==="income"?"계좌이체":"카드"),
       memo:r.memo||""};
   }).filter(r=>r.amt>0);
 }
@@ -1132,6 +1138,7 @@ async function cloudPull(){
 }
 const won = n => Number(n).toLocaleString() + "원";
 const getYM = d => String(d || "").slice(0,7);
+function ym(d){ return getYM(d); }
 const nowYM = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
 const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 
@@ -1198,6 +1205,14 @@ function bulkGuessCategory(desc, type){
   return applyLearnedCategory(desc, fallback);
 }
 
+function guessPaymentMethod(text,type="expense") {
+  const s=String(text||"");
+  if(/현금/.test(s)) return "현금";
+  if(/계좌이체|이체|송금|자동이체|출금/.test(s)) return "계좌이체";
+  if(/카드|승인|일시불|할부|체크/.test(s)) return "카드";
+  return type==="income" ? "계좌이체" : "카드";
+}
+
 function bulkParseTransactions(raw){
   const text=String(raw||'').replace(/\u00a0/g,' ').replace(/\r/g,'').trim();
   if(!text)return [];
@@ -1252,7 +1267,7 @@ function bulkParseTransactions(raw){
     if(!afterTime && approval&&approval[1])desc=approval[1].trim();
     if(!desc)desc=refund?'취소·환급 거래':'거래';
     if(refund)desc=`${desc} · 취소·환급`;
-    return {id:'bulk_'+Date.now()+'_'+idx,date:d.date,time:timeMatch?timeMatch[0].trim():'',type,amt:amount,acctId:null,cat:refund?'환급':bulkGuessCategory(desc,type),memo:desc,source:'bulk'};
+    return {id:'bulk_'+Date.now()+'_'+idx,date:d.date,time:timeMatch?timeMatch[0].trim():'',type,amt:amount,acctId:null,cat:refund?'환급':bulkGuessCategory(desc,type),payment:guessPaymentMethod(cleanLine,type),memo:desc,source:'bulk'};
   };
   const results=[];
   // 날짜가 붙은 거래내역은 날짜를 기준으로 블록을 만들고, 날짜 없는 줄은 직전 거래에 붙입니다.
@@ -1294,6 +1309,9 @@ function bulkRenderPreview(){
         <input value="${attrEscape(r.memo)}" onchange="bulkParsed[${i}].memo=this.value">
         <select onchange="bulkParsed[${i}].cat=this.value">
           ${cats.map(c=>`<option value="${bulkEsc(c)}" ${c===r.cat?'selected':''}>${bulkEsc(c)}</option>`).join('')}
+        </select>
+        <select onchange="bulkParsed[${i}].payment=this.value">
+          ${["카드","계좌이체","현금"].map(c=>`<option value="${c}" ${c===r.payment?'selected':''}>${c}</option>`).join('')}
         </select>
       </div>
       <div>
@@ -1432,12 +1450,13 @@ function buildAcctSelect(){
 function addRecord(){
  const date=document.getElementById("inDate").value;
  const acctId=document.getElementById("inAcct").value;
+ const payment=document.getElementById("inPayment")?.value||"카드";
  const amt=Number(document.getElementById("inAmt").value);
  const memo=document.getElementById("inMemo").value.trim();
  if(!date){alert("날짜를 선택하세요");return;}
  if(!acctId){alert("통장·카드를 먼저 추가하세요");return;}
  if(!amt||amt<=0){alert("금액을 올바르게 입력하세요");return;}
- records.push({id:Date.now(),date,type:curType,cat:curCat,amt,memo,acctId:Number(acctId),source:"manual"});
+ records.push({id:Date.now(),date,type:curType,cat:curCat,amt,memo,acctId:Number(acctId),payment,source:"manual"});
  const ac=accounts.find(a=>a.id===Number(acctId));
  if(ac) ac.bal += (curType==="income"?amt:-amt);
  save();
@@ -1460,6 +1479,7 @@ function openEdit(id){
    <h3>내역 수정</h3>
    <label>날짜</label><input type="date" id="eDate" value="${r.date}">
    <label>통장·카드</label><select id="eAcct">${acctOpts}</select>
+   <label>결제수단</label><select id="ePayment"><option value="카드" ${(r.payment||"카드")==="카드"?"selected":""}>카드</option><option value="계좌이체" ${r.payment==="계좌이체"?"selected":""}>계좌이체</option><option value="현금" ${r.payment==="현금"?"selected":""}>현금</option></select>
    <label>카테고리</label><select id="eCat">${catOpts}</select>
    <label>금액</label><input type="number" id="eAmt" value="${r.amt}">
    <label>메모</label><input type="text" id="eMemo" value="${r.memo||""}">
@@ -1479,6 +1499,7 @@ function saveEdit(){
  r.date=document.getElementById("eDate").value;
  r.acctId=Number(document.getElementById("eAcct").value);
  r.cat=document.getElementById("eCat").value;
+ r.payment=document.getElementById("ePayment")?.value||r.payment||"카드";
  r.amt=Number(document.getElementById("eAmt").value);
  r.memo=document.getElementById("eMemo").value.trim();
  const newAc=accounts.find(a=>a.id===r.acctId);
@@ -1959,7 +1980,7 @@ function render(){
  // 상단 요약 3종
  const inSum  = records.filter(r=>r.type==="income" && getYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
  const outSum = records.filter(r=>r.type==="expense"&& getYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
- const total  = accounts.reduce((s,a)=>s+Number(a.bal||0),0) + assets.reduce((s,a)=>s+Number(a.value||0),0);
+ const total  = accounts.reduce((s,a)=>s+Number(a.bal||0),0);
  const _sumIn=document.getElementById("sumIn"); if(_sumIn) _sumIn.textContent=won(inSum);
  const _sumOut=document.getElementById("sumOut"); if(_sumOut) _sumOut.textContent=won(outSum);
  const _sumBal=document.getElementById("sumBal"); if(_sumBal) _sumBal.textContent=won(total);
@@ -1997,7 +2018,7 @@ function render(){
  const ie=document.getElementById("incomeExpenseRecurList");
  if(ie){
   const arr=recurring.filter(r=>r.kind==="incomeExpense");
-  ie.innerHTML=arr.length?arr.map(r=>{const a=accounts.find(x=>x.id===r.acctId);return `<div class="row"><div><b>${r.type==="income"?"수입":"지출"} · ${bulkEsc(r.cat||"기타")}</b><div class="hint">${a?bulkEsc(a.name):"?"} · 매월 ${r.day}일 · 시작 ${r.startDate||"오늘"}${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b class="${r.type==="income"?"amt-plus":"amt-minus"}">${r.type==="income"?"+":"-"}${won(r.amt)}</b> <button class="btn tiny" onclick="event.stopPropagation();editRecurring(${r.id})">수정</button> <button class="del" onclick="event.stopPropagation();delIncomeExpenseRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 반복 수입·지출이 없어요</div>';
+  ie.innerHTML=arr.length?arr.map(r=>{const a=accounts.find(x=>x.id===r.acctId);return `<div class="row" style="cursor:pointer" onclick="editRecurring(${r.id})"><div><b>${r.type==="income"?"수입":"지출"} · ${bulkEsc(r.cat||"기타")}</b><div class="hint">${a?bulkEsc(a.name):"?"} · 매월 ${r.day}일 · 시작 ${r.startDate||"오늘"}${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b class="${r.type==="income"?"amt-plus":"amt-minus"}">${r.type==="income"?"+":"-"}${won(r.amt)}</b> <button class="del" onclick="event.stopPropagation();delIncomeExpenseRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 반복 수입·지출이 없어요</div>';
  }
  renderAssets();
  renderManualRecent();
@@ -2008,12 +2029,12 @@ function render(){
    recurList.innerHTML = transferRecurring.length
    ? transferRecurring.map(r=>{
        const f=accounts.find(a=>a.id===r.from), t=accounts.find(a=>a.id===r.to);
-       return `<div class="row" style="cursor:default">
+       return `<div class="row" style="cursor:pointer" onclick="editRecurring(${r.id})">
          <div><b>${f?f.name:"?"} → ${t?t.name:"?"}</b>
            <div style="font-size:12px;color:var(--sub)">매월 ${r.day}일 · 시작 ${r.startDate||"오늘"}${r.endDate?" ~ "+r.endDate:""} · ${r.memo||"메모 없음"}</div>
          </div>
          <span><b class="amt-move">${won(r.amt)}</b>
-           <button class="btn tiny" onclick="event.stopPropagation();editRecurring(${r.id})">수정</button> <button class="del" onclick="delRecurring(${r.id})">삭제</button></span>
+           <button class="del" onclick="event.stopPropagation();delRecurring(${r.id})">삭제</button></span>
        </div>`;
      }).join("")
    : `<div class="empty">등록된 통장 간 자동이체가 없어요</div>`;
@@ -2035,13 +2056,21 @@ drawTrend();
 }
 
 /* ================= 지출내역 ================= */
+let transactionViewType="expense";
+function showTransactionType(type,btn){
+ transactionViewType=type==="income"?"income":"expense";
+ document.querySelectorAll(".transaction-tabs button").forEach(b=>b.classList.remove("active"));
+ btn?.classList.add("active");
+ const title=document.getElementById("transactionTabTitle"); if(title) title.textContent=transactionViewType==="income"?"수입내역":"지출내역";
+ renderExpenseHistory();
+}
 function renderExpenseHistory(){
  const box=document.getElementById("expenseHistoryList");
  if(!box)return;
- const list=(records||[]).filter(r=>r.type==="expense" && !r.assetTransfer && r.type!=="move")
+ const list=(records||[]).filter(r=>r.type===transactionViewType && !r.assetTransfer && r.type!=="move")
    .slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")) || Number(b.id||0)-Number(a.id||0));
  if(!list.length){
-   box.innerHTML='<div class="empty">지출 내역이 없어요.</div>';
+   box.innerHTML=`<div class="empty">${transactionViewType==='income'?'수입':'지출'} 내역이 없어요.</div>`;
    return;
  }
  const byMonth={};
@@ -2069,8 +2098,8 @@ function renderExpenseHistory(){
                <div class="direct-memo ${memoText==="메모 없음"?"empty-memo":""}">${bulkEsc(memoText)}</div>
                <div class="expense-meta">${r.date||""} · ${ac?bulkEsc(ac.name):"통장·카드 미지정"}${r.source==="recurring"?" · 자동이체":""}</div>
              </div>
-             <div class="expense-category">${bulkEsc(r.cat||"기타")}</div>
-             <span class="amt-minus">-${won(r.amt)}</span>
+             <div class="expense-category">${bulkEsc(r.cat||"기타")}<div class="expense-payment">${bulkEsc(r.payment||"카드")}</div></div>
+             <span class="${transactionViewType==="income"?"amt-plus":"amt-minus"}">${transactionViewType==="income"?"+":"-"}${won(r.amt)}</span>
            </div>`;
          }).join("")}
        </div>`;
@@ -2298,14 +2327,14 @@ function renderAssetOverview(){
 
 function renderAnalysis(){
  renderCategoryManager();
- const ym=analysisYM(),monthRecords=records.filter(r=>String(r.date||"").slice(0,7)===ym);
- const title=document.getElementById("analysisMonth");if(title)title.textContent=monthLabel(ym);
- const btitle=document.getElementById("budgetMonth");if(btitle)btitle.textContent=monthLabel(ym);
- const bi=document.getElementById("analysisBudgetInput");if(bi)bi.value=getBudget(ym)||"";
+ const analysisMonthKey=analysisYM(),monthRecords=records.filter(r=>String(r.date||"").slice(0,7)===analysisMonthKey);
+ const title=document.getElementById("analysisMonth");if(title)title.textContent=monthLabel(analysisMonthKey);
+ const btitle=document.getElementById("budgetMonth");if(btitle)btitle.textContent=monthLabel(analysisMonthKey);
+ const bi=document.getElementById("analysisBudgetInput");if(bi)bi.value=getBudget(analysisMonthKey)||"";
  const bo=document.getElementById("analysisBudgetOverview");
  if(bo){
-   const bd=getBudget(ym),spent=monthRecords.filter(r=>r.type==="expense").reduce((a,r)=>a+Number(r.amt||0),0),pct=bd?Math.round(spent/bd*100):0;
-   bo.innerHTML=bd?`<div class="analysis-summary"><div><span>지출</span><b>${won(spent)}</b></div><div><span>예산</span><b>${won(bd)}</b></div><div><span>남은 예산</span><b>${won(Math.max(bd-spent,0))}</b></div></div><div class="analysis-item" style="margin-top:10px"><div class="analysis-line"><span>사용률</span><b>${pct}%</b></div><div class="bar"><i style="width:${Math.min(pct,100)}%"></i></div></div>`:`<div class="empty">${monthLabel(ym)} 예산이 아직 설정되지 않았어요.</div>`;
+   const bd=getBudget(analysisMonthKey),spent=monthRecords.filter(r=>r.type==="expense").reduce((a,r)=>a+Number(r.amt||0),0),pct=bd?Math.round(spent/bd*100):0;
+   bo.innerHTML=bd?`<div class="analysis-summary"><div><span>지출</span><b>${won(spent)}</b></div><div><span>예산</span><b>${won(bd)}</b></div><div><span>남은 예산</span><b>${won(Math.max(bd-spent,0))}</b></div></div><div class="analysis-item" style="margin-top:10px"><div class="analysis-line"><span>사용률</span><b>${pct}%</b></div><div class="bar"><i style="width:${Math.min(pct,100)}%"></i></div></div>`:`<div class="empty">${monthLabel(analysisMonthKey)} 예산이 아직 설정되지 않았어요.</div>`;
  }
 
  // 전체 쓰임새: 전체 지출을 카테고리별 도넛으로 표시
