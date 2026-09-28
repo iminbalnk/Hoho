@@ -603,10 +603,6 @@ html, body, input, select, textarea, button, option {
    <label>메모 (선택)</label><input type="text" id="inMemo" placeholder="예: 점심값">
    <button class="btn" onclick="addRecord()">저장하기</button>
   </div>
-  <div class="card">
-   <h3>최근 내역 <span style="font-size:12px;color:var(--sub);font-weight:400">(클릭하면 수정)</span></h3>
-   <div id="recentList"></div>
-  </div>
  </div>
 
  <div id="input-sub-auto" class="subpane hide">
@@ -789,8 +785,8 @@ html, body, input, select, textarea, button, option {
 <div class="navbar">
  <button id="btn-input" class="on" onclick="showTab('input')"><span class="ico">️</span>입력</button>
  <button id="btn-expenses" onclick="showTab('expenses')"><span class="ico"></span>지출</button>
- <button id="btn-accounts" onclick="showTab('accounts')"><span class="ico"></span>자산</button>
  <button id="btn-report" onclick="showTab('report')"><span class="ico"></span>분석</button>
+ <button id="btn-accounts" onclick="showTab('accounts')"><span class="ico"></span>자산</button>
  <button id="btn-settings" onclick="showTab('settings')"><span class="ico"></span>설정</button>
 </div>
 
@@ -1213,6 +1209,41 @@ function bulkParseTransactions(raw){
   if(current) blocks.push(current);
 
   const year = new Date().getFullYear();
+
+  // 한 줄짜리 결제문자도 인식: [Web발신] 하나7*6*승인 임*경 94,000원 일시불 09/23 21:47 형제애 누적...
+  if(blocks.length===0){
+    const singleLineBlocks=[];
+    for(const line of lines){
+      const dm=line.match(/(\d{1,2})[./-](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+      const am=line.match(/([+-])\s*([\d,]+(?:\.\d+)?)\s*원|([\d,]+(?:\.\d+)?)\s*원/);
+      if(!dm || !am) continue;
+      const amount=Number((am[2]||am[3]||'').replace(/,/g,''));
+      if(!amount) continue;
+      const beforeDate=line.slice(0,dm.index).replace(/^\[?Web발신\]?\s*/i,'').trim();
+      let afterDate=line.slice(dm.index+dm[0].length).trim();
+      afterDate=afterDate.replace(/^[-–—]\s*/,'').trim();
+      // 결제문자의 '누적' 잔액은 메모에서 제외하고 실제 가맹점명만 가져옵니다.
+      const descAfter=afterDate.split(/\s+누적(?:금액)?\s*/)[0].trim();
+      const desc=descAfter || beforeDate.replace(/.*?승인\s*/,'').trim() || beforeDate || '거래';
+      const sign=am[1] || (/입금|입금완료|받음|송금받|급여|환급/.test(line)?'+':'-');
+      singleLineBlocks.push({
+        month:+dm[1],day:+dm[2],hh:+dm[3],mm:+dm[4],ss:dm[5]?+dm[5]:null,
+        desc,lines:[],forcedAmount:amount,forcedSign:sign
+      });
+    }
+    if(singleLineBlocks.length){
+      return singleLineBlocks.map((b,idx)=>{
+        const type=b.forcedSign==='+'?'income':'expense';
+        return {
+          id:'bulk_'+Date.now()+'_'+idx,
+          date:`${year}-${String(b.month).padStart(2,'0')}-${String(b.day).padStart(2,'0')}`,
+          time:`${String(b.hh).padStart(2,'0')}:${String(b.mm).padStart(2,'0')}${b.ss==null?'':':'+String(b.ss).padStart(2,'0')}`,
+          type,amt:b.forcedAmount,acctId:typeof inAcct!=='undefined'?Number(inAcct):null,
+          cat:bulkGuessCategory(b.desc,type),memo:b.desc,source:'bulk'
+        };
+      });
+    }
+  }
 
   // 일반 문자: "09/17 17:54", "09.17 17:54", "09-17 17:54" + 다음 줄의 가맹점/금액
   if(!blocks.length){
@@ -1944,19 +1975,22 @@ function render(){
 
  // 최근 내역 (이체 제외, 클릭 시 수정)
  const rec = records.filter(r=>r.type!=="move").slice(-10).reverse();
- document.getElementById("recentList").innerHTML = rec.length
-   ? rec.map(r=>{
-       const ac = accounts.find(a=>a.id===r.acctId);
-       const cls  = r.type==="income" ? "amt-plus" : "amt-minus";
-       const sign = r.type==="income" ? "+" : "-";
-       return `<div class="row" onclick="openEdit(${r.id})">
-         <div><b>${r.cat}</b>
-           <div style="font-size:12px;color:var(--sub)">${r.date} · ${ac?ac.name:"삭제됨"}${r.memo?" · "+r.memo:""}</div>
-         </div>
-         <span class="${cls}">${sign}${won(r.amt)}</span>
-       </div>`;
-     }).join("")
-   : `<div class="empty">아직 내역이 없어요</div>`;
+ const recentBox=document.getElementById("recentList");
+ if(recentBox){
+   recentBox.innerHTML = rec.length
+     ? rec.map(r=>{
+         const ac = accounts.find(a=>a.id===r.acctId);
+         const cls  = r.type==="income" ? "amt-plus" : "amt-minus";
+         const sign = r.type==="income" ? "+" : "-";
+         return `<div class="row" onclick="openEdit(${r.id})">
+           <div><b>${r.cat}</b>
+             <div style="font-size:12px;color:var(--sub)">${r.date} · ${ac?ac.name:"삭제됨"}${r.memo?" · "+r.memo:""}</div>
+           </div>
+           <span class="${cls}">${sign}${won(r.amt)}</span>
+         </div>`;
+       }).join("")
+     : `<div class="empty">아직 내역이 없어요</div>`;
+ }
 
  // 통장 목록
  const sortEl=document.getElementById("accountSort");
