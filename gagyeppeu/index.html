@@ -958,9 +958,10 @@ window.__GAGYEPPEU_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3Mi
 let authMode = "login";
 
 function cloudCfg(){
- // Supabase 인증키는 앱에 고정된 Publishable Key만 사용합니다.
- // 예전에 저장된 잘못된 키가 있더라도 절대 재사용하지 않습니다.
- return {url:window.__GAGYEPPEU_SUPABASE_URL, key:window.__GAGYEPPEU_SUPABASE_KEY};
+ // 설정값을 함수 안에서 직접 읽어 배포/실행 순서에 영향을 받지 않게 합니다.
+ const url = "https://fegoelbzlomrthtpbafb.supabase.co";
+ const key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZlZ29lbGJ6bG9tcnRodHBiYWZiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2ODA2NzQsImV4cCI6MjEwNTI1NjY3NH0.s3TuW-NBStJ_cVfuHRHuYYCYl6nongNPuWtdVP0QlWg";
+ return {url, key};
 }
 function cloudStatus(msg){
  const el=document.getElementById("cloudStatus"); if(el) el.textContent=msg;
@@ -1072,7 +1073,8 @@ async function cloudLogin(){
    alert("[가계쀼 연결 진단]\n\n"+
      "Supabase 라이브러리: "+(libLoaded?"정상":"로드 실패")+"\n"+
      "Supabase 주소: "+(cfg.url?"설정됨":"없음")+"\n"+
-     "Supabase 키: "+(cfg.key?"설정됨":"없음")+"\n\n"+
+     "Supabase 키: "+(cfg.key?"설정됨":"없음")+"\n"+
+     "createClient: "+(libLoaded?"사용 가능":"사용 불가")+"\n\n"+
      "이 화면을 캡처해서 보내줘!");
    return;
   }
