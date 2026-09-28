@@ -478,6 +478,65 @@ body,input,select,textarea,button,h1,h2,h3,h4,h5,h6,.btn,.navbar button,.chip,la
   border-color:rgba(137,108,87,.20)!important;
 }
 
+
+/* ===== 통장 탭 정렬/정돈 ===== */
+.account-section-title{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:2px!important;
+  margin-bottom:10px!important;
+}
+.account-section-title h3{margin-bottom:0!important;line-height:1.2!important;}
+.account-section-title b{margin:0!important;line-height:1.15!important;}
+.account-toolbar{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  margin:2px 0 12px!important;
+  padding:9px 10px!important;
+  border:1px solid #4b3529!important;
+  border-radius:12px!important;
+  background:#241914!important;
+}
+.account-toolbar span{
+  color:#bcaea3!important;
+  font-size:12px!important;
+  white-space:nowrap!important;
+}
+.account-toolbar select{
+  width:auto!important;
+  min-width:132px!important;
+  padding:8px 10px!important;
+  margin:0!important;
+  font-size:12px!important;
+  text-align:left!important;
+}
+.acct-box{
+  text-align:left!important;
+}
+.acct-box .acct-top,
+.acct-box .acct-top > div{
+  text-align:left!important;
+}
+.acct-box .acct-name,
+.acct-box .acct-use,
+.acct-box .account-no,
+.acct-box .hint{
+  text-align:left!important;
+}
+.acct-box .account-no{
+  justify-content:flex-start!important;
+}
+.acct-box .acct-bal{
+  text-align:left!important;
+}
+@media(max-width:420px){
+  .account-toolbar select{min-width:120px!important;}
+}
+
 </style>
 <style id="pretendard-override">
 html, body, input, select, textarea, button, option {
@@ -494,19 +553,6 @@ html, body, input, select, textarea, button, option {
 <!-- ===== 탭1: 입력 ===== -->
 <div id="tab-input">
 <div id="dashboard">
-  <div class="hero">
-    <div class="eyebrow" id="heroMonth">26.09</div>
-    <div class="balance" id="heroBal">0원</div>
-    <div class="hero-sub">
-      <div class="hero-stat"><div class="slabel">수입</div><div class="sval" id="heroIn">0원</div></div>
-      <div class="hero-stat"><div class="slabel">지출</div><div class="sval" id="heroOut">0원</div></div>
-      <div class="hero-stat"><div class="slabel" id="heroMonthBalLabel">26.09 잔액</div><div class="sval" id="heroMonthBal">0원</div></div>
-    </div>
-  </div>
-  <div class="quick">
-    <button onclick="quickExpense()"><span class="qico"></span><b>지출 바로 입력</b><span>오늘 사용한 금액</span></button>
-    <button onclick="quickIncome()"><span class="qico"></span><b>수입 바로 입력</b><span>월급·용돈 등</span></button>
-  </div>
   <div class="card">
     <div class="month-nav">
       <button onclick="changeMonth(-1)">‹</button><div class="month-title" id="monthTitle"></div><button onclick="changeMonth(1)">›</button>
@@ -516,6 +562,15 @@ html, body, input, select, textarea, button, option {
     <div class="budget-editor" style="margin-top:12px">
       <input id="dashboardBudgetInput" type="number" min="0" step="10000" inputmode="numeric" placeholder="이 달의 예산을 입력하세요">
       <button class="btn small" style="margin-top:0;flex:0 0 auto" onclick="setBudget()">저장</button>
+    </div>
+  </div>
+  <div class="hero">
+    <div class="eyebrow" id="heroMonth">26.09</div>
+    <div class="balance" id="heroBal">0원</div>
+    <div class="hero-sub">
+      <div class="hero-stat"><div class="slabel">수입</div><div class="sval" id="heroIn">0원</div></div>
+      <div class="hero-stat"><div class="slabel">지출</div><div class="sval" id="heroOut">0원</div></div>
+      <div class="hero-stat"><div class="slabel" id="heroMonthBalLabel">26.09 잔액</div><div class="sval" id="heroMonthBal">0원</div></div>
     </div>
   </div>
 </div>
@@ -612,7 +667,17 @@ html, body, input, select, textarea, button, option {
 
  <div id="asset-pane-current" class="subpane">
   <div class="card">
-   <div class="section-title"><h3>우리 쀼자산</h3><b id="currentAssetTotal">0원</b></div>
+   <div class="section-title account-section-title"><h3>우리 쀼자산</h3><b id="currentAssetTotal">0원</b></div>
+   <div class="account-toolbar">
+    <span>통장 정렬</span>
+    <select id="accountSort" onchange="setAccountSortMode(this.value)">
+      <option value="default">추가한 순서</option>
+      <option value="name">이름순</option>
+      <option value="balanceDesc">잔액 많은 순</option>
+      <option value="balanceAsc">잔액 적은 순</option>
+      <option value="owner">관리주체 순</option>
+    </select>
+   </div>
    <div id="acctList"></div>
   </div>
   <div class="card">
@@ -628,8 +693,12 @@ html, body, input, select, textarea, button, option {
 
  <div id="asset-pane-future" class="subpane hide">
   <div class="card">
-   <div class="section-title"><div><div class="section-kicker">FUTURE ASSET</div><h3>적금 · 연금저축 · 주식</h3></div><span class="pill">계좌형 자산</span></div>
-   <p class="muted">적금과 연금저축은 통장처럼 잔액과 매월 자동납입으로 관리하고, 주식은 종목별 보유액이 아니라 주식계좌 전체 평가금액으로 관리해요.</p>
+   <div class="section-title account-section-title"><h3>우리 미래자산</h3><b id="assetTotal">0원</b></div>
+   <div id="assetList"></div>
+  </div>
+  <div class="card">
+   <div class="section-title"><div><div class="section-kicker">FUTURE ASSET</div><h3>미래자산 추가</h3></div><span class="pill">적금·연금·주식</span></div>
+   <p class="muted">적금과 연금저축은 통장처럼 잔액과 매월 자동납입으로 관리하고, 주식은 주식계좌 전체 평가금액으로 관리해요.</p>
    <label>자산 종류</label><select id="assetType"><option value="savings">적금통장</option><option value="pension">연금저축</option><option value="stock">주식계좌</option></select>
    <label>자산 이름</label><input id="assetName" placeholder="예: 주택청약 적금 / 연금저축 / 주식계좌">
    <label>현재 평가금액</label><input type="number" id="assetValue" min="0" placeholder="현재 잔액 또는 평가금액">
@@ -639,12 +708,9 @@ html, body, input, select, textarea, button, option {
    <button class="btn" onclick="addAsset()">자산 추가</button>
   </div>
   <div class="card">
-   <div class="return-tabs"><button class="active" onclick="showReturnPane('balance',this)">보유자산</button><button onclick="showReturnPane('returns',this)">월별 수익</button></div>
-   <div id="return-pane-balance">
-    <div class="section-title"><h3>내 미래자산</h3><b id="assetTotal">0원</b></div>
-    <div id="assetList"></div>
-   </div>
-   <div id="return-pane-returns" class="hide">
+   <div class="return-tabs"><button class="active" onclick="showReturnPane('returns',this)">월별 수익</button></div>
+   <div id="return-pane-balance" class="hide"></div>
+   <div id="return-pane-returns">
     <label>월</label><input type="month" id="returnMonth">
     <label>계좌</label><select id="returnAsset"></select>
     <label>월 수익 / 손익</label><input type="number" id="returnAmount" placeholder="수익은 +, 손실은 -">
@@ -862,16 +928,6 @@ let sb = null;
 let householdId = localStorage.getItem("householdId") || "";
 let householdShareCode = localStorage.getItem("householdShareCode") || "";
 
-// 이전 버전은 공유키(예: 88F8B116)를 householdId에 잘못 저장했습니다.
-// UUID가 아니면 공유키로 간주하고 householdId를 비워서 잘못된 UUID 조회를 막습니다.
-const HOUSEHOLD_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-if(householdId && !HOUSEHOLD_UUID_RE.test(householdId)){
-  if(!householdShareCode) householdShareCode = householdId;
-  householdId = "";
-  localStorage.setItem("householdShareCode", householdShareCode);
-  localStorage.removeItem("householdId");
-}
-
 function localSaveOnly(){
  localStorage.setItem("records", JSON.stringify(records));
  localStorage.setItem("accounts", JSON.stringify(accounts));
@@ -969,7 +1025,7 @@ async function cloudLogin(){
   document.getElementById("sbPassword").value="";
   cloudStatus("로그인됨");
   await updateCloudUser();
-  if(householdId && HOUSEHOLD_UUID_RE.test(householdId)) await cloudPull();
+  if(householdId) await cloudPull();
  }catch(e){
   console.error("LOGIN ERROR:",e);
   alert("로그인 실패\\n\\n"+(e?.message||String(e)));
@@ -997,82 +1053,26 @@ async function cloudCreateHousehold(){
  if(!sb && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
  const {data:userData}=await sb.auth.getUser();
  if(!userData?.user){alert("먼저 로그인해주세요.");return;}
-
- // 이미 이 기기에 연결된 가계부가 있으면 새 가계부를 만들지 않습니다.
- if(householdId && householdShareCode){
-   const inp=document.getElementById("householdIdInput");
-   if(inp) inp.value=householdShareCode;
-   alert("이미 연결된 가계부가 있어요.\n\n가계부 키는 변경할 수 없습니다.");
-   return;
- }
-
  const {data,error}=await sb.rpc("create_household",{p_name:"우리 쀼자산"});
  if(error){alert("가계부 만들기 실패\n\n"+error.message);return;}
- const result = Array.isArray(data) ? data[0] : data;
- const code=typeof result==="string"?result:(result?.share_code||result?.code||"");
- const hid=typeof result==="object"?(result?.household_id||result?.id||""):"";
+ const code=typeof data==="string"?data:(data?.share_code||data?.code||"");
+ const hid=typeof data==="object"?(data?.household_id||data?.id||""):"";
  if(!code || !hid){alert("가계부 정보를 받지 못했어요. Supabase SQL 설정을 확인해주세요.");return;}
- householdId=hid;
- householdShareCode=code;
- localStorage.setItem("householdId",householdId);
- localStorage.setItem("householdShareCode",householdShareCode);
+ householdId=hid; householdShareCode=code;
+ localStorage.setItem("householdId",householdId); localStorage.setItem("householdShareCode",householdShareCode);
  const inp=document.getElementById("householdIdInput");if(inp)inp.value=code;
- const box=document.getElementById("createdShareCode");
- if(box){
-   box.style.display="block";
-   box.innerHTML=`가계부 키<br><strong style="font-size:1.35em;letter-spacing:.08em">${bulkEsc(code)}</strong><br><span class="hint">이 키를 배우자에게 보내주세요.</span>`;
- }
- const hi=document.getElementById("householdInfo");
- if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
+ const box=document.getElementById("createdShareCode");if(box){box.style.display="block";box.innerHTML=`가계부 키<br><strong style="font-size:1.35em;letter-spacing:.08em">${bulkEsc(code)}</strong><br><span class="hint">이 키를 배우자에게 보내주세요.</span>`;}
+ const hi=document.getElementById("householdInfo");if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
  await cloudPull();
 }
-
 async function cloudJoinHousehold(){
  if(!sb && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
-
- const {data:userData}=await sb.auth.getUser();
- if(!userData?.user){alert("먼저 로그인해주세요.");return;}
-
- // 이미 연결된 가계부가 있으면 다른 가계부에 참여하지 않습니다.
- if(householdId && householdShareCode){
-   const inp=document.getElementById("householdIdInput");
-   if(inp) inp.value=householdShareCode;
-   alert("이미 가계부에 연결되어 있어요.\n\n기존 가계부를 삭제/탈퇴하기 전에는\n다른 가계부에 참여할 수 없습니다.");
-   return;
- }
-
  const id=(document.getElementById("householdIdInput")?.value||"").trim().toUpperCase();
  if(!id){alert("가계부 키를 입력해주세요.");return;}
-
  const {data,error}=await sb.rpc("join_household",{p_share_code:id});
  if(error){alert("가계부 참여 실패\n\n"+error.message);return;}
-
- // id는 공유키(예: 88F8B116), hid는 실제 household UUID입니다.
- const result = Array.isArray(data) ? data[0] : data;
- const code=result?.share_code || id;
- const hid=result?.household_id || result?.id || "";
- if(!hid){
-   alert("가계부 연결 정보를 받지 못했어요. Supabase SQL 설정을 확인해주세요.");
-   return;
- }
-
- // ★ householdId에는 반드시 UUID를 저장하고,
- //    공유키는 householdShareCode에 별도로 저장합니다.
- householdId=hid;
- householdShareCode=code;
- localStorage.setItem("householdId",householdId);
- localStorage.setItem("householdShareCode",householdShareCode);
-
- const inp=document.getElementById("householdIdInput");
- if(inp) inp.value=householdShareCode;
- const hi=document.getElementById("householdInfo");
- if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
- const box=document.getElementById("createdShareCode");
- if(box){
-   box.style.display="block";
-   box.innerHTML=`가계부 키<br><strong style="font-size:1.35em;letter-spacing:.08em">${bulkEsc(householdShareCode)}</strong><br><span class="hint">배우자와 함께 사용하는 가계부입니다.</span>`;
- }
-
+ householdId=id;localStorage.setItem("householdId",id);
+ const hi=document.getElementById("householdInfo");if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
  await cloudPull();
 }
 function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules(),categories:{income:CATS.income,expense:CATS.expense}};}
@@ -1671,7 +1671,19 @@ function renderAssetReturns(){
 function renderAssets(){
  const list=document.getElementById("assetList"),total=document.getElementById("assetTotal");if(!list||!total)return;
  total.textContent=won(assets.reduce((s,a)=>s+Number(a.value||0),0));
- list.innerHTML=assets.length?assets.map(a=>`<div class="acct-box" onclick="editAsset(${a.id})" style="cursor:pointer"><div class="acct-top"><div><div class="acct-name">${a.type==="savings"?"적금통장":a.type==="pension"?"연금저축":"주식계좌"} · ${bulkEsc(a.name)}</div><div class="acct-use">${bulkEsc(a.memo||"탭해서 수정")}</div>${a.accountNo?`<div class="account-no">${bulkEsc(a.accountNo)} <button class="copy-mini" onclick="event.stopPropagation();copyAccountNo('${String(a.accountNo).replace(/'/g,"\'")}')">복사</button></div>`:""}<div class="hint">관리주체 · ${bulkEsc(a.owner||"쀼")}</div></div></div><div class="acct-bal">${won(a.value)}</div></div>`).join(""):'<div class="empty">적금통장, 연금저축, 주식계좌를 추가해보세요</div>';
+ list.innerHTML=assets.length?assets.map(a=>`
+     <div class="acct-box" onclick="editAsset(${a.id})" style="cursor:pointer">
+       <div class="acct-top">
+         <div>
+           <div class="acct-name">${a.type==="savings"?"적금통장":a.type==="pension"?"연금저축":"주식계좌"} · ${bulkEsc(a.name)}</div>
+           <div class="acct-use">${bulkEsc(a.memo||"용도 미입력")}</div>
+           ${a.accountNo?`<div class="account-no">${bulkEsc(a.accountNo)} <button class="copy-mini" onclick="event.stopPropagation();copyAccountNo('${String(a.accountNo).replace(/'/g,"\'")}')">복사</button></div>`:""}
+           <div class="hint">관리주체 · ${bulkEsc(a.owner||"쀼")}</div>
+         </div>
+         <button class="del" onclick="event.stopPropagation();deleteAsset(${a.id})">삭제</button>
+       </div>
+       <div class="acct-bal">${won(a.value)}</div>
+     </div>`).join(""):'<div class="empty">적금통장, 연금저축, 주식계좌를 추가해보세요</div>';
  const sel=document.getElementById("arAsset");if(sel)sel.innerHTML=assets.length?assets.map(a=>`<option value="${a.id}">${a.type==="savings"?"적금통장":a.type==="pension"?"연금저축":"주식계좌"} · ${bulkEsc(a.name)}</option>`).join(""):'<option value="">자산을 먼저 추가하세요</option>';
  const ar=document.getElementById("assetRecurList");if(ar)ar.innerHTML=assetRecurring.length?assetRecurring.map(r=>{const f=accounts.find(a=>a.id===r.from),a=assets.find(x=>x.id===r.assetId);return `<div class="row"><div><b>${f?bulkEsc(f.name):"?"} → ${a?bulkEsc(a.name):"?"}</b><div class="hint">매월 ${r.day}일${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b>${won(r.amt)}</b> <button class="del" onclick="event.stopPropagation();delAssetRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 자산 자동이체가 없어요</div>';
 }
@@ -1875,6 +1887,30 @@ function renderDashboard(){
 
 }
 
+
+/* ===== 통장 정렬 ===== */
+let accountSortMode = localStorage.getItem("accountSortMode") || "default";
+function getSortedAccounts(){
+  const arr=[...accounts];
+  switch(accountSortMode){
+    case "name":
+      return arr.sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ko"));
+    case "balanceDesc":
+      return arr.sort((a,b)=>Number(b.bal||0)-Number(a.bal||0));
+    case "balanceAsc":
+      return arr.sort((a,b)=>Number(a.bal||0)-Number(b.bal||0));
+    case "owner":
+      return arr.sort((a,b)=>String(a.owner||"쀼").localeCompare(String(b.owner||"쀼"),"ko"));
+    default:
+      return arr;
+  }
+}
+function setAccountSortMode(mode){
+  accountSortMode=mode||"default";
+  localStorage.setItem("accountSortMode",accountSortMode);
+  render();
+}
+
 /* ================= 화면 전체 갱신 ================= */
 function render(){
  const m = nowYM();
@@ -1905,8 +1941,10 @@ function render(){
    : `<div class="empty">아직 내역이 없어요</div>`;
 
  // 통장 목록
+ const sortEl=document.getElementById("accountSort");
+ if(sortEl) sortEl.value=accountSortMode;
  document.getElementById("acctList").innerHTML = accounts.length
-   ? accounts.map(a=>`
+   ? getSortedAccounts().map(a=>`
      <div class="acct-box" onclick="editAccount(${a.id})" style="cursor:pointer">
        <div class="acct-top">
          <div>
@@ -1918,7 +1956,6 @@ function render(){
          <button class="del" onclick="event.stopPropagation();delAccount(${a.id})">삭제</button>
        </div>
        <div class="acct-bal">${won(a.bal)}</div>
-       <div class="hint">탭해서 수정</div>
      </div>`).join("")
    : `<div class="empty">통장·카드를 추가해보세요</div>`;
 
@@ -1942,8 +1979,10 @@ function render(){
  }
  renderAssets();
  // 반복이체 목록
- const recurList=document.getElementById("recurList"); if(recurList) recurList.innerHTML = recurring.length
-   ? recurring.map(r=>{
+ const recurList=document.getElementById("recurList"); if(recurList) {
+   const transferRecurring = recurring.filter(r=>r.kind==="transfer");
+   recurList.innerHTML = transferRecurring.length
+   ? transferRecurring.map(r=>{
        const f=accounts.find(a=>a.id===r.from), t=accounts.find(a=>a.id===r.to);
        return `<div class="row" style="cursor:default">
          <div><b>${f?f.name:"?"} → ${t?t.name:"?"}</b>
@@ -1953,7 +1992,8 @@ function render(){
            <button class="del" onclick="delRecurring(${r.id})">삭제</button></span>
        </div>`;
      }).join("")
-   : `<div class="empty">등록된 반복이체가 없어요</div>`;
+   : `<div class="empty">등록된 통장 간 자동이체가 없어요</div>`;
+ }
 
  // 분석 탭이 열려 있을 때만 그래프 갱신
  if(!document.getElementById("tab-report").classList.contains("hide")){
@@ -2227,7 +2267,7 @@ function renderAnalysis(){
        if(data.session){
          cloudStatus(" 연결됨 · 로그인 상태");
          updateCloudUser();
-         if(householdId && HOUSEHOLD_UUID_RE.test(householdId)) await cloudPull();
+         if(householdId) await cloudPull();
        }
      }).catch(e=>console.error("AUTH INIT ERROR:",e));
    }
@@ -2239,18 +2279,9 @@ function renderAnalysis(){
 })();
 </script>
 <script>
-// 오래된 Service Worker가 예전 index.html을 계속 보여주는 문제를 방지합니다.
-// 가계쀼의 로그인/클라우드 동기화에는 Service Worker가 필요하지 않습니다.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      const regs = await navigator.serviceWorker.getRegistrations();
-      await Promise.all(regs.map(r => r.unregister()));
-      if (window.caches) {
-        const keys = await caches.keys();
-        await Promise.all(keys.map(k => caches.delete(k)));
-      }
-    } catch(e) { console.warn('SERVICE WORKER CLEANUP:', e); }
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js?v=3').catch(() => {});
   });
 }
 </script>
