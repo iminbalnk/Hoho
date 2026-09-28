@@ -927,7 +927,7 @@ const COLORS = ["#1b5e42","#2a9d8f","#e07a5f","#f2cc8f","#81b29a","#6d597a","#b5
 /* ================= 저장 / 유틸 ================= */
 let cloudSyncing = false;
 let cloudLoading = false;
-let sb = null;
+window.__gagyeppeuSupabaseClient = null;
 let householdId = localStorage.getItem("householdId") || "";
 let householdShareCode = localStorage.getItem("householdShareCode") || "";
 
@@ -969,7 +969,7 @@ function setCloudClient(){
  const c=cloudCfg();
  if(!c.url || !c.key || c.key.indexOf("__PASTE_")===0 || !window.supabase) return false;
  try{
-   sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
+   window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
    return true;
  }catch(e){ console.error("SUPABASE CLIENT ERROR:",e); cloudStatus("Supabase 설정을 확인해주세요."); return false; }
 }
@@ -996,12 +996,12 @@ async function cloudSignup(){
   const password=document.getElementById("sbPassword")?.value||"";
   if(!email||!password){alert("이메일과 비밀번호를 입력해주세요.");return;}
   if(password.length<6){alert("비밀번호는 6자 이상으로 입력해주세요.");return;}
-  if(!sb && !setCloudClient()){
+  if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){
    alert("Supabase 연결을 시작하지 못했어요. 페이지를 새로고침해 주세요.");
    return;
   }
 
-  const {data,error}=await sb.auth.signUp({email,password});
+  const {data,error}=await window.__gagyeppeuSupabaseClient.auth.signUp({email,password});
   if(error) throw error;
 
   if(data?.session){
@@ -1022,12 +1022,12 @@ async function cloudLogin(){
   const email=(document.getElementById("sbEmail")?.value||"").trim();
   const password=document.getElementById("sbPassword")?.value||"";
   if(!email||!password){alert("이메일과 비밀번호를 입력해주세요.");return;}
-  if(!sb && !setCloudClient()){
+  if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){
    alert("Supabase 연결을 시작하지 못했어요. 페이지를 새로고침해 주세요.");
    return;
   }
 
-  const {data,error}=await sb.auth.signInWithPassword({email,password});
+  const {data,error}=await window.__gagyeppeuSupabaseClient.auth.signInWithPassword({email,password});
   if(error) throw error;
   document.getElementById("sbPassword").value="";
   cloudStatus("로그인됨");
@@ -1039,14 +1039,14 @@ async function cloudLogin(){
  }
 }
 async function cloudLogout(){
- if(sb) await sb.auth.signOut();
+ if(window.__gagyeppeuSupabaseClient) await window.__gagyeppeuSupabaseClient.auth.signOut();
  // 로그아웃해도 연결된 가계부 정보는 유지합니다. 다시 로그인하면 자동으로 불러옵니다.
  cloudStatus("로그아웃됨");
  updateCloudUser();
 }
 async function updateCloudUser(){
- if(!sb)return;
- const {data}=await sb.auth.getUser();
+ if(!window.__gagyeppeuSupabaseClient)return;
+ const {data}=await window.__gagyeppeuSupabaseClient.auth.getUser();
  const el=document.getElementById("cloudUser");
  const logout=document.getElementById("authLogoutBtn");
  const fields=document.getElementById("loginFields");
@@ -1055,10 +1055,10 @@ async function updateCloudUser(){
  if(fields)fields.style.display=data?.user?"none":"block";
 }
 async function cloudCreateHousehold(){
- if(!sb && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
- const {data:userData}=await sb.auth.getUser();
+ if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
+ const {data:userData}=await window.__gagyeppeuSupabaseClient.auth.getUser();
  if(!userData?.user){alert("먼저 로그인해주세요.");return;}
- const {data,error}=await sb.rpc("create_household",{p_name:"우리 쀼자산"});
+ const {data,error}=await window.__gagyeppeuSupabaseClient.rpc("create_household",{p_name:"우리 쀼자산"});
  if(error){alert("가계부 만들기 실패\n\n"+error.message);return;}
  const code=typeof data==="string"?data:(data?.share_code||data?.code||"");
  const hid=typeof data==="object"?(data?.household_id||data?.id||""):"";
@@ -1071,10 +1071,10 @@ async function cloudCreateHousehold(){
  await cloudPull();
 }
 async function cloudJoinHousehold(){
- if(!sb && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
+ if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
  const id=(document.getElementById("householdIdInput")?.value||"").trim().toUpperCase();
  if(!id){alert("가계부 키를 입력해주세요.");return;}
- const {data,error}=await sb.rpc("join_household",{p_share_code:id});
+ const {data,error}=await window.__gagyeppeuSupabaseClient.rpc("join_household",{p_share_code:id});
  if(error){alert("가계부 참여 실패\n\n"+error.message);return;}
  householdId=id;localStorage.setItem("householdId",id);
  const hi=document.getElementById("householdInfo");if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
@@ -1083,15 +1083,15 @@ async function cloudJoinHousehold(){
 function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules(),categories:{income:CATS.income,expense:CATS.expense}};}
 async function cloudPush(){
  if(cloudSyncing||cloudLoading||!householdId)return;
- if(!sb && !setCloudClient())return;
+ if(!window.__gagyeppeuSupabaseClient && !setCloudClient())return;
  cloudSyncing=true;
  try{
-   const {data:userData}=await sb.auth.getUser(); if(!userData?.user) return;
+   const {data:userData}=await window.__gagyeppeuSupabaseClient.auth.getUser(); if(!userData?.user) return;
    if(!HOUSEHOLD_UUID_RE.test(String(householdId))) throw new Error("가계부 연결 ID가 올바르지 않아요. 다시 로그인해주세요.");
-   const {data:member,error:memberError}=await sb.from("household_members").select("household_id").eq("user_id",userData.user.id).eq("household_id",householdId).maybeSingle();
+   const {data:member,error:memberError}=await window.__gagyeppeuSupabaseClient.from("household_members").select("household_id").eq("user_id",userData.user.id).eq("household_id",householdId).maybeSingle();
    if(memberError) throw memberError;
    if(!member) throw new Error("현재 로그인한 계정이 이 가계부에 연결되어 있지 않아요.");
-   const {error}=await sb.from("household_data").upsert({household_id:householdId,data:cloudPayload(),updated_at:new Date().toISOString()},{onConflict:"household_id"});
+   const {error}=await window.__gagyeppeuSupabaseClient.from("household_data").upsert({household_id:householdId,data:cloudPayload(),updated_at:new Date().toISOString()},{onConflict:"household_id"});
    if(error) throw error;
    cloudStatus(" 저장됨 · "+new Date().toLocaleTimeString());
  }catch(e){
@@ -1101,15 +1101,15 @@ async function cloudPush(){
  finally{cloudSyncing=false;}
 }
 async function cloudPull(){
- if(!sb && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
+ if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
  if(householdId && !HOUSEHOLD_UUID_RE.test(String(householdId))){
    if(!householdShareCode){ householdShareCode=householdId; localStorage.setItem("householdShareCode",householdShareCode); }
    householdId=""; localStorage.removeItem("householdId");
  }
  if(!householdId && householdShareCode){
-   const {data:userData}=await sb.auth.getUser();
+   const {data:userData}=await window.__gagyeppeuSupabaseClient.auth.getUser();
    if(!userData?.user)return;
-   const {data,error}=await sb.rpc("join_household",{p_share_code:householdShareCode});
+   const {data,error}=await window.__gagyeppeuSupabaseClient.rpc("join_household",{p_share_code:householdShareCode});
    if(error){alert("가계부 연결 정보를 확인하지 못했어요.\n\n"+error.message);return;}
    const result=Array.isArray(data)?data[0]:data;
    const hid=result?.household_id || result?.id || "";
@@ -1120,7 +1120,7 @@ async function cloudPull(){
    localStorage.setItem("householdShareCode",householdShareCode);
  }
  if(!householdId || !HOUSEHOLD_UUID_RE.test(String(householdId)))return;
- const {data,error}=await sb.from("household_data").select("data").eq("household_id",householdId).maybeSingle();
+ const {data,error}=await window.__gagyeppeuSupabaseClient.from("household_data").select("data").eq("household_id",householdId).maybeSingle();
  if(error){alert("클라우드 불러오기 실패: "+error.message);return;}
  if(!data?.data)return;
  const d=data.data; cloudLoading=true;
@@ -2459,8 +2459,8 @@ async function refreshApp(){
    }catch(e){ console.error("RECURRING INIT ERROR:",e); }
 
    // 클라우드 세션 확인도 기본 화면 표시와 분리합니다.
-   if(sb){
-     sb.auth.getSession().then(async ({data})=>{
+   if(window.__gagyeppeuSupabaseClient){
+     window.__gagyeppeuSupabaseClient.auth.getSession().then(async ({data})=>{
        if(data.session){
          cloudStatus(" 연결됨 · 로그인 상태");
          updateCloudUser();
