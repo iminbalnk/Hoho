@@ -791,7 +791,7 @@ html, body, input, select, textarea, button, option {
  </div>
  <div class="card">
    <button class="app-refresh-btn" type="button" onclick="refreshApp()" aria-label="새로고침" title="새로고침" style="width:100%;font-size:15px;padding:12px">↻ 새로고침</button>
-   <div id="lastRefreshTime" class="hint" style="text-align:center;margin-top:9px">마지막 새로고침 시간을 불러오는 중…</div>
+   <div id="lastRefreshTime" class="hint" style="text-align:center;margin-top:9px">마지막 새로고침 · --:--</div>
  </div>
  <div class="card">
    <h3>백업 / 복원</h3>
@@ -1007,7 +1007,16 @@ function setCloudClient(){
  if(!window.supabase) return false;
  try{
    if(!window.__gagyeppeuSupabaseClient){
-     window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:window.localStorage,storageKey:"gagyeppeu-auth"}});
+     // Supabase 기본 저장소 키를 사용합니다. 커스텀 키를 쓰면 Safari에서
+// 새로고침 후 세션이 분리되어 로그인이 풀리는 문제가 생길 수 있습니다.
+const defaultAuthKey = "sb-" + new URL(c.url).hostname.split(".")[0] + "-auth-token";
+try{
+  const legacy = localStorage.getItem("gagyeppeu-auth");
+  if(legacy && !localStorage.getItem(defaultAuthKey)){
+    localStorage.setItem(defaultAuthKey, legacy);
+  }
+}catch(e){}
+window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:window.localStorage}});
    }
    return true;
  }catch(e){ console.error("SUPABASE CLIENT ERROR:",e); cloudStatus("Supabase 설정을 확인해주세요."); return false; }
@@ -2469,8 +2478,11 @@ function renderAnalysis(){
 }
 
 function updateLastRefreshTime(){
+  const key='gagyeppeuLastRefreshAt';
+  const now=new Date();
+  try{ localStorage.setItem(key, now.toISOString()); }catch(e){}
   const el=document.getElementById('lastRefreshTime');
-  if(el) el.textContent='마지막 새로고침 · '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  if(el) el.textContent='마지막 새로고침 · '+now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
 }
 
 async function refreshApp(){
@@ -2544,7 +2556,6 @@ async function restoreAuthSession(){
        updateCloudUser().catch(()=>{});
      });
    }
-   updateCloudUser().catch(()=>{});
 
    const inDate=document.getElementById("inDate"); if(inDate) inDate.value=today();
    const rm=document.getElementById("returnMonth"); if(rm) rm.value=nowYM();
@@ -2572,10 +2583,16 @@ async function restoreAuthSession(){
      restoreAuthSession().then(async (session)=>{
        if(session){
          cloudStatus(" 연결됨 · 로그인 상태");
-         updateCloudUser().catch(()=>{});
+         await updateCloudUser().catch(()=>{});
          await cloudPull();
+       }else{
+         cloudStatus("로그인하지 않았어요");
+         await updateCloudUser().catch(()=>{});
        }
-     }).catch(e=>console.error("AUTH INIT ERROR:",e));
+     }).catch(e=>{
+       console.error("AUTH INIT ERROR:",e);
+       updateCloudUser().catch(()=>{});
+     });
    }
  } catch(e) {
    console.error("APP INIT ERROR:", e);
