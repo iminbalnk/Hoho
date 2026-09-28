@@ -1038,15 +1038,8 @@ function setCloudClient(){
  if(!window.supabase) return false;
  try{
    if(!window.__gagyeppeuSupabaseClient){
-     window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{
-       auth:{
-         persistSession:true,
-         autoRefreshToken:true,
-         detectSessionInUrl:false,
-         storage:authStorage(),
-         storageKey:"gagyeppeu-supabase-auth-v4"
-       }
-     });
+     // 로그인 세션은 예전에 실제로 정상 작동했던 Supabase 기본 저장소를 사용합니다.
+     window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key);
    }
    return true;
  }catch(e){ console.error("SUPABASE CLIENT ERROR:",e); cloudStatus("Supabase 설정을 확인해주세요."); return false; }
@@ -1113,28 +1106,50 @@ async function cloudLogin(){
   const password=document.getElementById("sbPassword")?.value||"";
   if(!email||!password){alert("이메일과 비밀번호를 입력해주세요.");return;}
   if(!(await ensureCloudClient())){
-   const libLoaded=!!(window.supabase && typeof window.supabase.createClient === "function");
-   const cfg=cloudCfg();
-   alert("[가계쀼 연결 진단]\n\n"+
-     "Supabase 라이브러리: "+(libLoaded?"정상":"로드 실패")+"\n"+
-     "Supabase 주소: "+(cfg.url?"설정됨":"없음")+"\n"+
-     "Supabase 키: "+(cfg.key?"설정됨":"없음")+"\n"+
-     "createClient: "+(libLoaded?"사용 가능":"사용 불가")+"\n\n"+
-     "이 화면을 캡처해서 보내줘!");
+   alert("Supabase 연결을 시작하지 못했어요. 페이지를 새로고침해 주세요.");
    return;
   }
 
-  const {data,error}=await window.__gagyeppeuSupabaseClient.auth.signInWithPassword({email,password});
-  if(error) throw error;
-  saveAuthBackup(data?.session);
+  const c=cloudCfg();
+  // 이전에 실제로 로그인과 데이터 저장이 정상 작동했던 방식 그대로
+  // Supabase Auth REST에서 세션을 받은 뒤 SDK에 넣습니다.
+  const response=await fetch(c.url.replace(/\/$/,"")+"/auth/v1/token?grant_type=password",{
+   method:"POST",
+   headers:{
+    "apikey":c.key,
+    "Authorization":"Bearer "+c.key,
+    "Content-Type":"application/json"
+   },
+   body:JSON.stringify({email,password})
+  });
+
+  let body=null;
+  try{body=await response.json();}catch(e){}
+  if(!response.ok){
+   const msg=body?.msg||body?.message||body?.error_description||body?.error||("HTTP "+response.status);
+   const code=body?.code||body?.error_code||"";
+   alert("로그인 실패\n\n"+msg+(code?"\n\n코드: "+code:""));
+   return;
+  }
+  if(!body?.access_token||!body?.refresh_token){
+   alert("로그인은 처리됐지만 세션 정보가 오지 않았어요.\nSupabase Auth 설정을 확인해주세요.");
+   return;
+  }
+
+  const sessionResult=await window.__gagyeppeuSupabaseClient.auth.setSession({
+   access_token:body.access_token,
+   refresh_token:body.refresh_token
+  });
+  if(sessionResult?.error) throw sessionResult.error;
+  saveAuthBackup(sessionResult?.data?.session||body);
+
   document.getElementById("sbPassword").value="";
   cloudStatus("로그인됨");
   await updateCloudUser();
-  // 로그인 직후에는 기존 연결 정보(구버전 키 포함)를 반드시 다시 확인합니다.
   await cloudPull();
  }catch(e){
-  console.error("LOGIN ERROR:",e);
-  alert("로그인 실패\\n\\n"+(e?.message||String(e)));
+  console.error("LOGIN REST ERROR:",e);
+  alert("로그인 중 오류가 발생했어요.\n\n"+(e?.message||String(e)));
  }
 }
 async function cloudLogout(){
