@@ -1001,17 +1001,52 @@ function ensureSupabaseLoaded(){
    __gagyeppeuSupabaseLoading.then(resolve);
  });
 }
-const GAGYEPPEU_AUTH_BACKUP_KEY="gagyeppeuAuthBackupV3";
-function saveAuthBackup(session){try{if(session?.access_token&&session?.refresh_token)localStorage.setItem(GAGYEPPEU_AUTH_BACKUP_KEY,JSON.stringify({access_token:session.access_token,refresh_token:session.refresh_token}));}catch(e){}}
+const GAGYEPPEU_AUTH_BACKUP_KEY="gagyeppeuAuthBackupV4";
+function saveAuthBackup(session){
+  try{
+    if(session?.access_token&&session?.refresh_token){
+      localStorage.setItem(GAGYEPPEU_AUTH_BACKUP_KEY,JSON.stringify({
+        access_token:session.access_token,
+        refresh_token:session.refresh_token
+      }));
+    }
+  }catch(e){console.warn("AUTH BACKUP SAVE ERROR",e);}
+}
 function clearAuthBackup(){try{localStorage.removeItem(GAGYEPPEU_AUTH_BACKUP_KEY);}catch(e){}}
-function getAuthBackup(){try{const x=JSON.parse(localStorage.getItem(GAGYEPPEU_AUTH_BACKUP_KEY)||"null");return x?.access_token&&x?.refresh_token?x:null;}catch(e){return null;}}
+function getAuthBackup(){
+  try{
+    const x=JSON.parse(localStorage.getItem(GAGYEPPEU_AUTH_BACKUP_KEY)||"null");
+    return x?.access_token&&x?.refresh_token?x:null;
+  }catch(e){return null;}
+}
+function authStorage(){
+  return {
+    getItem:(key)=>{
+      try{return localStorage.getItem(key);}catch(e){return null;}
+    },
+    setItem:(key,value)=>{
+      try{localStorage.setItem(key,value);}catch(e){console.warn("AUTH STORAGE SAVE ERROR",e);}
+    },
+    removeItem:(key)=>{
+      try{localStorage.removeItem(key);}catch(e){}
+    }
+  };
+}
 function setCloudClient(){
  const c=cloudCfg();
  if(!c.url || !c.key || c.key.indexOf("__PASTE_")===0) return false;
  if(!window.supabase) return false;
  try{
    if(!window.__gagyeppeuSupabaseClient){
-window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:window.localStorage}});
+     window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{
+       auth:{
+         persistSession:true,
+         autoRefreshToken:true,
+         detectSessionInUrl:false,
+         storage:authStorage(),
+         storageKey:"gagyeppeu-supabase-auth-v4"
+       }
+     });
    }
    return true;
  }catch(e){ console.error("SUPABASE CLIENT ERROR:",e); cloudStatus("Supabase 설정을 확인해주세요."); return false; }
@@ -2507,14 +2542,35 @@ async function restoreAuthSession(){
  try{
   if(!window.__gagyeppeuSupabaseClient)return null;
   const client=window.__gagyeppeuSupabaseClient;
+
+  // 1) Supabase가 자체 저장소에서 복원한 세션을 우선 사용
   const current=await client.auth.getSession();
-  if(current?.data?.session){saveAuthBackup(current.data.session);return current.data.session;}
+  if(current?.data?.session){
+    saveAuthBackup(current.data.session);
+    return current.data.session;
+  }
+
+  // 2) 자체 백업 토큰으로 복원
   const saved=getAuthBackup();
   if(!saved)return null;
-  const restored=await client.auth.setSession(saved);
+  const restored=await client.auth.setSession({
+    access_token:saved.access_token,
+    refresh_token:saved.refresh_token
+  });
   if(restored?.error)throw restored.error;
-  if(restored?.data?.session){saveAuthBackup(restored.data.session);return restored.data.session;}
- }catch(e){console.error("AUTH RESTORE ERROR:",e);}
+  if(restored?.data?.session){
+    saveAuthBackup(restored.data.session);
+    return restored.data.session;
+  }
+ }catch(e){
+  console.error("AUTH RESTORE ERROR:",e);
+  // 만료/폐기된 토큰일 때만 백업을 정리합니다.
+  // 일시적인 네트워크 오류에서는 로그인 정보를 지우지 않습니다.
+  const msg=String(e?.message||e||"").toLowerCase();
+  if(msg.includes("refresh token") || msg.includes("invalid refresh") || msg.includes("session_not_found")){
+    clearAuthBackup();
+  }
+ }
  return null;
 }
 
