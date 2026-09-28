@@ -810,7 +810,12 @@ html, body, input, select, textarea, button, option {
  <button id="btn-settings" onclick="showTab('settings')"><span class="ico"></span>설정</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/@supabase/supabase-js@2';s.onload=function(){window.dispatchEvent(new Event('supabase-ready'));};document.head.appendChild(s);})();"></script>
+<script>
+window.addEventListener('supabase-ready',function(){
+  try{ if(typeof setCloudClient==='function') setCloudClient(); }catch(e){ console.error('SUPABASE FALLBACK INIT ERROR:',e); }
+});
+</script>
 <script>
 /* ================= 앱 오류 표시 ================= */
 window.addEventListener("error", function(e){
@@ -967,7 +972,10 @@ function cloudStatus(msg){
 }
 function setCloudClient(){
  const c=cloudCfg();
- if(!c.url || !c.key || c.key.indexOf("__PASTE_")===0 || !window.supabase) return false;
+ if(!c.url || !c.key || c.key.indexOf("__PASTE_")===0) return false;
+ if(!window.supabase){
+   return false;
+ }
  try{
    window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false}});
    return true;
@@ -997,8 +1005,11 @@ async function cloudSignup(){
   if(!email||!password){alert("이메일과 비밀번호를 입력해주세요.");return;}
   if(password.length<6){alert("비밀번호는 6자 이상으로 입력해주세요.");return;}
   if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){
-   alert("Supabase 연결을 시작하지 못했어요. 페이지를 새로고침해 주세요.");
-   return;
+   await new Promise(resolve=>setTimeout(resolve,500));
+   if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){
+     alert("Supabase 연결을 시작하지 못했어요. 인터넷 연결 또는 Supabase 라이브러리 로딩을 확인해주세요.");
+     return;
+   }
   }
 
   const {data,error}=await window.__gagyeppeuSupabaseClient.auth.signUp({email,password});
