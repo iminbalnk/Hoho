@@ -1067,7 +1067,13 @@ async function cloudLogin(){
   const password=document.getElementById("sbPassword")?.value||"";
   if(!email||!password){alert("이메일과 비밀번호를 입력해주세요.");return;}
   if(!(await ensureCloudClient())){
-   alert("Supabase 연결을 시작하지 못했어요. 인터넷 연결을 확인한 뒤 다시 눌러주세요.");
+   const libLoaded=!!(window.supabase && typeof window.supabase.createClient === "function");
+   const cfg=cloudCfg();
+   alert("[가계쀼 연결 진단]\n\n"+
+     "Supabase 라이브러리: "+(libLoaded?"정상":"로드 실패")+"\n"+
+     "Supabase 주소: "+(cfg.url?"설정됨":"없음")+"\n"+
+     "Supabase 키: "+(cfg.key?"설정됨":"없음")+"\n\n"+
+     "이 화면을 캡처해서 보내줘!");
    return;
   }
 
