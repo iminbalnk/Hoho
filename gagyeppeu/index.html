@@ -48,6 +48,8 @@ font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',system-ui,san
 }
  body{background:var(--cream);color:var(--text);padding:16px;padding-bottom:90px;max-width:520px;margin:0 auto;transition:background .2s;}
  .head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+ .app-refresh-btn{border:1px solid var(--line);background:var(--card);color:var(--sub);border-radius:12px;padding:8px 11px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:var(--shadow);}
+ .app-refresh-btn:active{transform:scale(.97);opacity:.85;}
  h2{color:var(--green);font-size:20px;}
  h3{font-size:16px;margin-bottom:12px;color:var(--green);}
  .card{background:var(--card);border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:var(--shadow);}
@@ -548,6 +550,7 @@ html, body, input, select, textarea, button, option {
 
 <div class="head">
  <h2 id="title">가계쀼</h2>
+ <button class="app-refresh-btn" type="button" onclick="refreshApp()" aria-label="새로고침" title="새로고침">↻</button>
 </div>
 
 <!-- ===== 탭1: 입력 ===== -->
@@ -583,12 +586,7 @@ html, body, input, select, textarea, button, option {
 
  <div id="input-sub-paste" class="subpane">
   <div class="card bulk-card">
-   <div class="section-title">
-    <div><div class="section-kicker">PASTE ANYTHING</div><h3>거래내역 한 번에 붙여넣기</h3></div>
-    <span class="pill">다중입력</span>
-   </div>
-   <p class="muted">은행·카드 앱 거래내역과 결제 문자를 구분하지 않고 그대로 한 번에 붙여넣어 주세요.</p>
-   <textarea id="bulkText" class="sms-area" placeholder=""></textarea>
+   <textarea id="bulkText" class="sms-area" placeholder="은행·카드 앱 거래내역과 결제 문자를 구분하지 않고 그대로 한 번에 붙여넣어 주세요."></textarea>
    <div class="row gap8 bulk-actions">
     <button class="btn secondary" id="bulkParseBtn" type="button">자동으로 읽기</button>
     <button class="btn" id="bulkSaveBtn" type="button" disabled>전체 저장</button>
@@ -706,18 +704,6 @@ html, body, input, select, textarea, button, option {
    <label>관리주체</label><select id="assetOwner"><option value="쀼">쀼</option><option value="남편">남편</option><option value="아내">아내</option></select>
    <label>메모</label><input id="assetMemo" placeholder="예: 월 30만원 자동납입">
    <button class="btn" onclick="addAsset()">자산 추가</button>
-  </div>
-  <div class="card">
-   <div class="return-tabs"><button class="active" onclick="showReturnPane('returns',this)">월별 수익</button></div>
-   <div id="return-pane-balance" class="hide"></div>
-   <div id="return-pane-returns">
-    <label>월</label><input type="month" id="returnMonth">
-    <label>계좌</label><select id="returnAsset"></select>
-    <label>월 수익 / 손익</label><input type="number" id="returnAmount" placeholder="수익은 +, 손실은 -">
-    <label>메모</label><input id="returnMemo" placeholder="예: 9월 평가손익">
-    <button class="btn" onclick="addAssetReturn()">월별 수익 기록</button>
-    <div id="assetReturnList" style="margin-top:14px"></div>
-   </div>
   </div>
  </div>
 </div>
@@ -2231,6 +2217,25 @@ function renderAnalysis(){
    const rows=Object.entries(sums).sort((a,b)=>b[1]-a[1]);
    cm.innerHTML=rows.length?rows.map(([n,v])=>`<div class="row"><span>${bulkEsc(n)}</span><b>${won(v)}</b></div>`).join(""):`<div class="empty">${monthLabel(ym)} 지출이 없어요</div>`;
  }
+}
+
+async function refreshApp(){
+  const btn=document.querySelector('.app-refresh-btn');
+  if(btn){btn.disabled=true;btn.textContent='↻ 새로고침 중…';}
+  try{
+    // 앱 화면 캐시를 비우되 로그인/가계부 데이터가 들어 있는 localStorage는 건드리지 않아요.
+    if('caches' in window){
+      const keys=await caches.keys();
+      await Promise.all(keys.map(k=>caches.delete(k)));
+    }
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r=>r.unregister().catch(()=>false)));
+    }
+  }catch(e){
+    console.warn('refresh cache clear skipped',e);
+  }
+  location.reload();
 }
 
 (function init(){
