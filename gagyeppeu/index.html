@@ -927,6 +927,8 @@ const COLORS = ["#1b5e42","#2a9d8f","#e07a5f","#f2cc8f","#81b29a","#6d597a","#b5
 /* ================= 저장 / 유틸 ================= */
 let cloudSyncing = false;
 let cloudLoading = false;
+// 클라우드 데이터를 처음 성공적으로 불러오기 전에는 빈 로컬 데이터가 클라우드를 덮어쓰지 않도록 합니다.
+let cloudHydrated = false;
 window.__gagyeppeuSupabaseClient = null;
 var gagyeppeuHouseholdId = localStorage.getItem("gagyeppeuHouseholdId") || localStorage.getItem("householdId") || "";
 var householdShareCode = localStorage.getItem("householdShareCode") || localStorage.getItem("householdCode") || "";
@@ -953,7 +955,8 @@ function localSaveOnly(){
 }
 function save(){
  localSaveOnly();
- if(!cloudLoading) cloudPush().catch(()=>{});
+ // 최초 cloudPull 전에는 로컬 초기값으로 기존 클라우드 데이터를 덮어쓰지 않습니다.
+ if(!cloudLoading && cloudHydrated) cloudPush().catch(()=>{});
 }
 window.__GAGYEPPEU_SUPABASE_URL = "https://fegoelbzlomrthtpbafb.supabase.co";
 try{localStorage.removeItem("sbUrl");localStorage.removeItem("sbKey");}catch(e){}
@@ -1191,6 +1194,7 @@ async function cloudPull(){
    saveCustomCategories();
  }
  normalizeData(); normalizeRecords(); localSaveOnly();
+ cloudHydrated=true;
  buildChips(); buildAcctSelect(); renderAssets(); render();
  try{renderAnalysis();}catch(e){console.error("ANALYSIS PULL ERROR:",e);}
  cloudLoading=false; cloudStatus("클라우드 데이터를 불러왔어요.");
@@ -2511,6 +2515,9 @@ async function refreshApp(){
 
    // 반복이체는 화면 표시 후 실행하고, 실행된 내용은 다시 화면에 반영합니다.
    try{
+     // 로그인 세션이 이미 있으면 아래 cloudPull이 먼저 실행되므로,
+     // 초기 빈 데이터로 클라우드를 덮어쓰지 않습니다.
+     if(!window.__gagyeppeuSupabaseClient || !cloudHydrated){}
      runRecurring();
      runAssetRecurring();
      render();
