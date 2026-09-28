@@ -539,6 +539,7 @@ body,input,select,textarea,button,h1,h2,h3,h4,h5,h6,.btn,.navbar button,.chip,la
   .account-toolbar select{min-width:120px!important;}
 }
 
+.direct-memo{color:#fff;font-size:12px;margin-top:3px}.direct-cat{display:block}.direct-expense-list{}
 </style>
 <style id="pretendard-override">
 html, body, input, select, textarea, button, option {
@@ -606,6 +607,10 @@ html, body, input, select, textarea, button, option {
    <h3>최근 내역 <span style="font-size:12px;color:var(--sub);font-weight:400">(클릭하면 수정)</span></h3>
    <div id="recentList"></div>
   </div>
+  <div class="card">
+   <h3>직접입력 지출내역</h3>
+   <div id="directExpenseList"></div>
+  </div>
  </div>
 
  <div id="input-sub-auto" class="subpane hide">
@@ -618,6 +623,8 @@ html, body, input, select, textarea, button, option {
    <label>통장·카드</label><select id="recurAcct"></select>
    <label>금액</label><input type="number" id="recurAmt" min="1" placeholder="예: 150000">
    <label>매월 실행일</label><input type="number" id="recurDay" min="1" max="31" placeholder="예: 25">
+   <label>시작일</label><input type="date" id="recurStart">
+   <label>종료일 <span class="hint">선택</span></label><input type="date" id="recurEnd">
    <label>카테고리</label><select id="recurCat"></select>
    <label>메모</label><input type="text" id="recurMemo" placeholder="예: 월세 / 급여 / 보험료">
    <button class="btn sub" onclick="addIncomeExpenseRecurring()">자동이체 등록</button>
@@ -630,6 +637,8 @@ html, body, input, select, textarea, button, option {
    <label>입금 통장</label><select id="rTo"></select>
    <label>금액</label><input type="number" id="rAmt" min="1" placeholder="예: 300000">
    <label>매월 실행일</label><input type="number" id="rDay" min="1" max="31" placeholder="예: 25">
+   <label>시작일</label><input type="date" id="rStart">
+   <label>종료일 <span class="hint">선택</span></label><input type="date" id="rEnd">
    <label>메모</label><input type="text" id="rMemo" placeholder="예: 생활비 이체">
    <button class="btn sub" onclick="addRecurring()">통장 간 자동이체 등록</button>
    <div id="recurList" style="margin-top:12px"></div>
@@ -642,6 +651,8 @@ html, body, input, select, textarea, button, option {
    <label>받는 자산</label><select id="arAsset"></select>
    <label>금액</label><input type="number" id="arAmt" min="1" placeholder="예: 300000">
    <label>매월 실행일</label><input type="number" id="arDay" min="1" max="31" placeholder="예: 25">
+   <label>시작일</label><input type="date" id="arStart">
+   <label>종료일 <span class="hint">선택</span></label><input type="date" id="arEnd">
    <label>메모</label><input id="arMemo" placeholder="예: 연금저축 자동납입">
    <button class="btn sub" onclick="addAssetRecurring()">미래자산 자동납입 등록</button>
    <div id="assetRecurList" style="margin-top:12px"></div>
@@ -1051,10 +1062,17 @@ async function cloudPush(){
  cloudSyncing=true;
  try{
    const {data:userData}=await sb.auth.getUser(); if(!userData?.user) return;
+   if(!HOUSEHOLD_UUID_RE.test(String(householdId))) throw new Error("가계부 연결 ID가 올바르지 않아요. 다시 로그인해주세요.");
+   const {data:member,error:memberError}=await sb.from("household_members").select("household_id").eq("user_id",userData.user.id).eq("household_id",householdId).maybeSingle();
+   if(memberError) throw memberError;
+   if(!member) throw new Error("현재 로그인한 계정이 이 가계부에 연결되어 있지 않아요.");
    const {error}=await sb.from("household_data").upsert({household_id:householdId,data:cloudPayload(),updated_at:new Date().toISOString()},{onConflict:"household_id"});
    if(error) throw error;
    cloudStatus(" 저장됨 · "+new Date().toLocaleTimeString());
- }catch(e){ cloudStatus(" 저장 실패 · 설정/RLS를 확인해주세요"); }
+ }catch(e){
+   console.error("CLOUD PUSH ERROR:",e);
+   cloudStatus(" 저장 실패 · "+(e?.message||"설정/RLS를 확인해주세요"));
+ }
  finally{cloudSyncing=false;}
 }
 async function cloudPull(){
@@ -1533,10 +1551,12 @@ function executeTransfer(from,to,amt,memo,date){
 function addRecurring(){
  const from=Number(document.getElementById("rFrom").value),to=Number(document.getElementById("rTo").value);
  const amt=Number(document.getElementById("rAmt").value),day=Number(document.getElementById("rDay").value);
- const memo=document.getElementById("rMemo").value.trim();
+ const startDate=document.getElementById("rStart")?.value||today(),endDate=document.getElementById("rEnd")?.value||"",memo=document.getElementById("rMemo").value.trim();
  if(!from||!to||from===to){alert("서로 다른 통장을 선택하세요");return;}
  if(!amt||amt<=0||!day||day<1||day>31){alert("입력값을 확인하세요");return;}
- recurring.push({id:Date.now()+Math.random(),kind:"transfer",from,to,amt,day,memo,lastRun:""});save();render();
+ if(endDate && endDate<startDate){alert("종료일은 시작일 이후로 설정해주세요.");return;}
+ recurring.push({id:Date.now()+Math.random(),kind:"transfer",from,to,amt,day,startDate,endDate,memo,lastRun:""});save();render();
+ document.getElementById("rAmt").value="";document.getElementById("rMemo").value="";
 }
 function delRecurring(id){if(!confirm("이 반복이체를 삭제할까요?"))return;recurring=recurring.filter(r=>r.id!==id);save();render();}
 function updateRecurringCategory(){
@@ -1546,22 +1566,30 @@ function updateRecurringCategory(){
 function addIncomeExpenseRecurring(){
  const type=document.getElementById("recurType").value,acctId=Number(document.getElementById("recurAcct").value);
  const amt=Number(document.getElementById("recurAmt").value),day=Number(document.getElementById("recurDay").value);
+ const startDate=document.getElementById("recurStart")?.value||today(),endDate=document.getElementById("recurEnd")?.value||"";
  const cat=document.getElementById("recurCat").value,memo=document.getElementById("recurMemo").value.trim();
  if(!acctId||!amt||amt<=0||!day||day<1||day>31){alert("입력값을 확인하세요");return;}
- recurring.push({id:Date.now()+Math.random(),kind:"incomeExpense",type,acctId,amt,day,cat,memo,lastRun:""});save();render();
+ if(endDate && endDate<startDate){alert("종료일은 시작일 이후로 설정해주세요.");return;}
+ recurring.push({id:Date.now()+Math.random(),kind:"incomeExpense",type,acctId,amt,day,startDate,endDate,cat,memo,lastRun:""});save();render();
+ document.getElementById("recurAmt").value="";document.getElementById("recurMemo").value="";
 }
 function delIncomeExpenseRecurring(id){if(!confirm("이 반복 수입·지출을 삭제할까요?"))return;recurring=recurring.filter(r=>r.id!==id);save();render();}
 function runRecurring(){
- const now=new Date(),key=nowYM();
+ const now=new Date(),todayStr=today(),key=nowYM(),day=now.getDate();
  recurring.forEach(r=>{
-  if(r.lastRun===key||now.getDate()<r.day)return;
-  const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),d=key+"-"+String(Math.min(r.day,lastDay)).padStart(2,"0");
+  const startDate=r.startDate||"";
+  const endDate=r.endDate||"";
+  if(startDate && todayStr<startDate)return;
+  if(endDate && todayStr>endDate)return;
+  // 예약된 날짜가 지나갔다고 소급 실행하지 않고, 실제 실행일에만 반영합니다.
+  if(Number(r.day)!==day || r.lastRun===todayStr)return;
+  const lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate(),d=key+"-"+String(Math.min(Number(r.day),lastDay)).padStart(2,"0");
   if(r.kind==="incomeExpense"){
    const ac=accounts.find(a=>a.id===r.acctId);if(!ac)return;
    records.push({id:Date.now()+Math.random(),date:d,type:r.type,cat:r.cat||"기타",amt:Number(r.amt),memo:(r.memo||"")+" (자동)",acctId:r.acctId,source:"recurring"});
-   ac.bal+=r.type==="income"?Number(r.amt):-Number(r.amt);r.lastRun=key;
+   ac.bal+=r.type==="income"?Number(r.amt):-Number(r.amt);r.lastRun=todayStr;
   }else{
-   if(executeTransfer(r.from,r.to,r.amt,(r.memo||"")+" (자동)",d))r.lastRun=key;
+   if(executeTransfer(r.from,r.to,r.amt,(r.memo||"")+" (자동)",d)){r.lastRun=todayStr;}
   }
  });
  save();
@@ -1596,21 +1624,28 @@ function deleteAsset(id){
  assets=assets.filter(a=>a.id!==id);assetRecurring=assetRecurring.filter(r=>r.assetId!==id);save();document.getElementById("assetEditModal")?.remove();renderAssets();
 }
 function addAssetRecurring(){
- const from=Number(document.getElementById("arFrom").value),assetId=Number(document.getElementById("arAsset").value),amt=Number(document.getElementById("arAmt").value),day=Number(document.getElementById("arDay").value),memo=document.getElementById("arMemo").value.trim();
+ const from=Number(document.getElementById("arFrom").value),assetId=Number(document.getElementById("arAsset").value),amt=Number(document.getElementById("arAmt").value),day=Number(document.getElementById("arDay").value);
+ const startDate=document.getElementById("arStart")?.value||today(),endDate=document.getElementById("arEnd")?.value||"",memo=document.getElementById("arMemo").value.trim();
  if(!from||!assetId||!amt||amt<=0||!day||day<1||day>31){alert("입력값을 확인하세요");return;}
- assetRecurring.push({id:Date.now()+Math.random(),from,assetId,amt,day,memo,lastRun:""});save();renderAssets();
- document.getElementById("arAmt").value="";document.getElementById("arDay").value="";document.getElementById("arMemo").value="";
+ if(endDate && endDate<startDate){alert("종료일은 시작일 이후로 설정해주세요.");return;}
+ assetRecurring.push({id:Date.now()+Math.random(),from,assetId,amt,day,startDate,endDate,memo,lastRun:""});save();renderAssets();
+ document.getElementById("arAmt").value="";document.getElementById("arMemo").value="";
 }
 function delAssetRecurring(id){if(!confirm("이 자산 자동이체를 삭제할까요?"))return;assetRecurring=assetRecurring.filter(r=>r.id!==id);save();renderAssets();}
 function runAssetRecurring(){
- const now=new Date(),key=nowYM(),lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
+ const now=new Date(),todayStr=today(),key=nowYM(),day=now.getDate(),lastDay=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();
  assetRecurring.forEach(r=>{
-  if(r.lastRun===key||now.getDate()<r.day)return;
+  const startDate=r.startDate||"";
+  const endDate=r.endDate||"";
+  if(startDate && todayStr<startDate)return;
+  if(endDate && todayStr>endDate)return;
+  if(Number(r.day)!==day || r.lastRun===todayStr)return;
   const ac=accounts.find(a=>a.id===r.from),asset=assets.find(a=>a.id===r.assetId);if(!ac||!asset)return;
   const amt=Number(r.amt);ac.bal-=amt;asset.value=(Number(asset.value)||0)+amt;
-  records.push({id:Date.now()+Math.random(),date:key+"-"+String(Math.min(r.day,lastDay)).padStart(2,"0"),type:"move",amt,memo:(r.memo||"")+" (자산 자동이체)",from:ac.name,to:asset.name,assetTransfer:true});
-  r.lastRun=key;
- });save();
+  records.push({id:Date.now()+Math.random(),date:key+"-"+String(Math.min(Number(r.day),lastDay)).padStart(2,"0"),type:"move",amt,memo:(r.memo||"")+" (자산 자동이체)",from:ac.name,to:asset.name,assetTransfer:true});
+  r.lastRun=todayStr;
+ });
+ save();
 }
 function showReturnPane(pane,btn){
  document.getElementById("return-pane-balance")?.classList.toggle("hide",pane!=="balance");
@@ -1669,7 +1704,7 @@ function renderAssets(){
        <div class="acct-bal">${won(a.value)}</div>
      </div>`).join(""):'<div class="empty">적금통장, 연금저축, 주식계좌를 추가해보세요</div>';
  const sel=document.getElementById("arAsset");if(sel)sel.innerHTML=assets.length?assets.map(a=>`<option value="${a.id}">${a.type==="savings"?"적금통장":a.type==="pension"?"연금저축":"주식계좌"} · ${bulkEsc(a.name)}</option>`).join(""):'<option value="">자산을 먼저 추가하세요</option>';
- const ar=document.getElementById("assetRecurList");if(ar)ar.innerHTML=assetRecurring.length?assetRecurring.map(r=>{const f=accounts.find(a=>a.id===r.from),a=assets.find(x=>x.id===r.assetId);return `<div class="row"><div><b>${f?bulkEsc(f.name):"?"} → ${a?bulkEsc(a.name):"?"}</b><div class="hint">매월 ${r.day}일${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b>${won(r.amt)}</b> <button class="del" onclick="event.stopPropagation();delAssetRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 자산 자동이체가 없어요</div>';
+ const ar=document.getElementById("assetRecurList");if(ar)ar.innerHTML=assetRecurring.length?assetRecurring.map(r=>{const f=accounts.find(a=>a.id===r.from),a=assets.find(x=>x.id===r.assetId);return `<div class="row"><div><b>${f?bulkEsc(f.name):"?"} → ${a?bulkEsc(a.name):"?"}</b><div class="hint">매월 ${r.day}일 · ${r.startDate||"오늘부터"}${r.endDate?" ~ "+r.endDate:""}${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b>${won(r.amt)}</b> <button class="del" onclick="event.stopPropagation();delAssetRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 자산 자동이체가 없어요</div>';
 }
 /* ================= 백업/복원 ================= */
 function backup(){
@@ -1916,6 +1951,22 @@ function render(){
      }).join("")
    : `<div class="empty">아직 내역이 없어요</div>`;
 
+ // 직접입력으로 저장한 지출만 별도로 계속 보여줍니다. 자동 지출/이체는 제외합니다.
+ const directExpenses = records.filter(r=>r.type==="expense" && r.source!=="recurring" && !r.assetTransfer).slice(-20).reverse();
+ const directBox=document.getElementById("directExpenseList");
+ if(directBox) directBox.innerHTML = directExpenses.length
+   ? directExpenses.map(r=>{
+       const ac=accounts.find(a=>a.id===r.acctId);
+       return `<div class="row" onclick="openEdit(${r.id})">
+         <div><b class="direct-cat">${bulkEsc(r.cat||"기타")}</b>
+           <div class="direct-memo">${bulkEsc(r.memo||"메모 없음")}</div>
+           <div class="hint">${r.date} · ${ac?bulkEsc(ac.name):"삭제됨"}</div>
+         </div>
+         <span class="amt-minus">-${won(r.amt)}</span>
+       </div>`;
+     }).join("")
+   : `<div class="empty">직접 입력한 지출이 없어요</div>`;
+
  // 통장 목록
  const sortEl=document.getElementById("accountSort");
  if(sortEl) sortEl.value=accountSortMode;
@@ -1962,7 +2013,7 @@ function render(){
        const f=accounts.find(a=>a.id===r.from), t=accounts.find(a=>a.id===r.to);
        return `<div class="row" style="cursor:default">
          <div><b>${f?f.name:"?"} → ${t?t.name:"?"}</b>
-           <div style="font-size:12px;color:var(--sub)">매월 ${r.day}일 · ${r.memo||"메모 없음"}</div>
+           <div style="font-size:12px;color:var(--sub)">매월 ${r.day}일 · ${r.startDate||"오늘부터"}${r.endDate?" ~ "+r.endDate:""} · ${r.memo||"메모 없음"}</div>
          </div>
          <span><b class="amt-move">${won(r.amt)}</b>
            <button class="del" onclick="delRecurring(${r.id})">삭제</button></span>
