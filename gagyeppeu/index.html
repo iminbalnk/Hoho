@@ -1033,16 +1033,34 @@ function authStorage(){
   };
 }
 function setCloudClient(){
- const c=cloudCfg();
- if(!c.url || !c.key || c.key.indexOf("__PASTE_")===0) return false;
- if(!window.supabase) return false;
- try{
-   if(!window.__gagyeppeuSupabaseClient){
-     // 로그인 세션은 예전에 실제로 정상 작동했던 Supabase 기본 저장소를 사용합니다.
-     window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key);
-   }
-   return true;
- }catch(e){ console.error("SUPABASE CLIENT ERROR:",e); cloudStatus("Supabase 설정을 확인해주세요."); return false; }
+  const c = cloudCfg();
+
+  if(!c.url || !c.key || c.key.indexOf("__PASTE_") === 0) return false;
+  if(!window.supabase) return false;
+
+  try{
+    if(!window.__gagyeppeuSupabaseClient){
+      window.__gagyeppeuSupabaseClient = window.supabase.createClient(
+        c.url,
+        c.key,
+        {
+          auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: true,
+            storage: window.localStorage,
+            storageKey: "gagyeppeu-supabase-auth"
+          }
+        }
+      );
+    }
+
+    return true;
+  }catch(e){
+    console.error("SUPABASE CLIENT ERROR:", e);
+    cloudStatus("Supabase 설정을 확인해주세요.");
+    return false;
+  }
 }
 async function ensureCloudClient(){
  const c=cloudCfg();
