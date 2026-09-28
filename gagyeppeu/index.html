@@ -1001,21 +1001,16 @@ function ensureSupabaseLoaded(){
    __gagyeppeuSupabaseLoading.then(resolve);
  });
 }
+const GAGYEPPEU_AUTH_BACKUP_KEY="gagyeppeuAuthBackupV3";
+function saveAuthBackup(session){try{if(session?.access_token&&session?.refresh_token)localStorage.setItem(GAGYEPPEU_AUTH_BACKUP_KEY,JSON.stringify({access_token:session.access_token,refresh_token:session.refresh_token}));}catch(e){}}
+function clearAuthBackup(){try{localStorage.removeItem(GAGYEPPEU_AUTH_BACKUP_KEY);}catch(e){}}
+function getAuthBackup(){try{const x=JSON.parse(localStorage.getItem(GAGYEPPEU_AUTH_BACKUP_KEY)||"null");return x?.access_token&&x?.refresh_token?x:null;}catch(e){return null;}}
 function setCloudClient(){
  const c=cloudCfg();
  if(!c.url || !c.key || c.key.indexOf("__PASTE_")===0) return false;
  if(!window.supabase) return false;
  try{
    if(!window.__gagyeppeuSupabaseClient){
-     // Supabase 기본 저장소 키를 사용합니다. 커스텀 키를 쓰면 Safari에서
-// 새로고침 후 세션이 분리되어 로그인이 풀리는 문제가 생길 수 있습니다.
-const defaultAuthKey = "sb-" + new URL(c.url).hostname.split(".")[0] + "-auth-token";
-try{
-  const legacy = localStorage.getItem("gagyeppeu-auth");
-  if(legacy && !localStorage.getItem(defaultAuthKey)){
-    localStorage.setItem(defaultAuthKey, legacy);
-  }
-}catch(e){}
 window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:window.localStorage}});
    }
    return true;
@@ -1096,6 +1091,7 @@ async function cloudLogin(){
 
   const {data,error}=await window.__gagyeppeuSupabaseClient.auth.signInWithPassword({email,password});
   if(error) throw error;
+  saveAuthBackup(data?.session);
   document.getElementById("sbPassword").value="";
   cloudStatus("로그인됨");
   await updateCloudUser();
@@ -1108,6 +1104,7 @@ async function cloudLogin(){
 }
 async function cloudLogout(){
  if(window.__gagyeppeuSupabaseClient) await window.__gagyeppeuSupabaseClient.auth.signOut();
+ clearAuthBackup();
  // 로그아웃해도 연결된 가계부 정보는 유지합니다. 다시 로그인하면 자동으로 불러옵니다.
  cloudStatus("로그아웃됨");
  updateCloudUser();
@@ -2478,11 +2475,12 @@ function renderAnalysis(){
 }
 
 function updateLastRefreshTime(){
-  const key='gagyeppeuLastRefreshAt';
-  const now=new Date();
-  try{ localStorage.setItem(key, now.toISOString()); }catch(e){}
-  const el=document.getElementById('lastRefreshTime');
-  if(el) el.textContent='마지막 새로고침 · '+now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  const key='gagyeppeuLastRefreshAt',el=document.getElementById('lastRefreshTime');
+  try{
+    const now=new Date();
+    localStorage.setItem(key,now.toISOString());
+    if(el)el.textContent='마지막 새로고침 · '+now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){if(el)el.textContent='마지막 새로고침 · '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}
 }
 
 async function refreshApp(){
@@ -2506,36 +2504,18 @@ async function refreshApp(){
 
 
 async function restoreAuthSession(){
-  try{
-    if(!window.__gagyeppeuSupabaseClient) return null;
-    const client=window.__gagyeppeuSupabaseClient;
-    let {data,error}=await client.auth.getSession();
-    if(error) throw error;
-    if(data?.session) return data.session;
-
-    // 이전 저장 방식에 남아 있는 Supabase 세션을 찾아 새 저장 키로 옮깁니다.
-    const keys=[];
-    for(let i=0;i<localStorage.length;i++){
-      const k=localStorage.key(i);
-      if(k && (k.startsWith("sb-") || k.includes("supabase"))) keys.push(k);
-    }
-    for(const k of keys){
-      try{
-        const raw=localStorage.getItem(k);
-        if(!raw) continue;
-        const parsed=JSON.parse(raw);
-        const session=parsed?.access_token ? parsed : parsed?.currentSession || parsed?.session || null;
-        if(session?.access_token && session?.refresh_token){
-          const r=await client.auth.setSession({
-            access_token:session.access_token,
-            refresh_token:session.refresh_token
-          });
-          if(r.data?.session) return r.data.session;
-        }
-      }catch(e){}
-    }
-  }catch(e){ console.error("AUTH RESTORE ERROR:",e); }
-  return null;
+ try{
+  if(!window.__gagyeppeuSupabaseClient)return null;
+  const client=window.__gagyeppeuSupabaseClient;
+  const current=await client.auth.getSession();
+  if(current?.data?.session){saveAuthBackup(current.data.session);return current.data.session;}
+  const saved=getAuthBackup();
+  if(!saved)return null;
+  const restored=await client.auth.setSession(saved);
+  if(restored?.error)throw restored.error;
+  if(restored?.data?.session){saveAuthBackup(restored.data.session);return restored.data.session;}
+ }catch(e){console.error("AUTH RESTORE ERROR:",e);}
+ return null;
 }
 
 (function init(){
@@ -2549,8 +2529,10 @@ async function restoreAuthSession(){
    if(window.__gagyeppeuSupabaseClient){
      window.__gagyeppeuSupabaseClient.auth.onAuthStateChange((event,session)=>{
        if(session){
+         saveAuthBackup(session);
          cloudStatus(" 연결됨 · 로그인 상태");
        }else if(event === "SIGNED_OUT"){
+         clearAuthBackup();
          cloudStatus("로그아웃됨");
        }
        updateCloudUser().catch(()=>{});
