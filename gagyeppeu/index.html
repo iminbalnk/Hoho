@@ -895,6 +895,10 @@ let sb = null;
 let householdId = localStorage.getItem("householdId") || "";
 let householdShareCode = localStorage.getItem("householdShareCode") || "";
 
+// household_id는 Supabase UUID 형식인지 확인합니다.
+const HOUSEHOLD_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+
 function localSaveOnly(){
  localStorage.setItem("records", JSON.stringify(records));
  localStorage.setItem("accounts", JSON.stringify(accounts));
@@ -1849,7 +1853,7 @@ function renderDashboard(){
   const bal=accounts.reduce((s,a)=>s+a.bal,0), budget=getBudget(nowYM());
   document.getElementById("heroMonth").textContent=monthLabel(m);document.getElementById("heroMonthBalLabel").textContent=`${monthLabel(m)} 잔액`;document.getElementById("heroBal").textContent=won(bal);
   document.getElementById("heroIn").textContent=won(ins);document.getElementById("heroOut").textContent=won(outs);
-  document.getElementById("heroMonthBal").textContent=won(ins-outs);document.getElementById("monthTitle").textContent=monthLabel(m);document.getElementById("budgetLabel").textContent="당월 예산";
+  document.getElementById("heroMonthBal").textContent=won(ins-outs);const _monthTitle=document.getElementById("monthTitle");if(_monthTitle)_monthTitle.textContent=monthLabel(m);const _budgetLabel=document.getElementById("budgetLabel");if(_budgetLabel)_budgetLabel.textContent="당월 예산";
   const bt=document.getElementById("budgetText"),bf=document.getElementById("budgetFill"),bp=document.getElementById("budgetProgress");
   if(bt&&bf&&bp){
     if(budget){const pct=Math.round(outs/budget*100);bt.textContent=`${won(outs)} / ${won(budget)} (${pct}%)`;bf.style.width=Math.min(pct,100)+"%";bp.classList.toggle("over",outs>budget);}
