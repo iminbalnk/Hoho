@@ -1033,34 +1033,34 @@ function authStorage(){
   };
 }
 function setCloudClient(){
-  const c = cloudCfg();
-
-  if(!c.url || !c.key || c.key.indexOf("__PASTE_") === 0) return false;
-  if(!window.supabase) return false;
-
-  try{
-    if(!window.__gagyeppeuSupabaseClient){
-      window.__gagyeppeuSupabaseClient = window.supabase.createClient(
-        c.url,
-        c.key,
-        {
-          auth: {
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true,
-            storage: window.localStorage,
-            storageKey: "gagyeppeu-supabase-auth"
-          }
-        }
-      );
-    }
-
-    return true;
-  }catch(e){
-    console.error("SUPABASE CLIENT ERROR:", e);
-    cloudStatus("Supabase 설정을 확인해주세요.");
-    return false;
-  }
+const c = cloudCfg();
+ 
+if(!c.url || !c.key || c.key.indexOf("__PASTE_") === 0) return false;
+if(!window.supabase || typeof window.supabase.createClient !== "function") return false;
+ 
+try{
+if(!window.__gagyeppeuSupabaseClient){
+window.__gagyeppeuSupabaseClient = window.supabase.createClient(
+c.url,
+c.key,
+{
+auth: {
+persistSession: true,
+autoRefreshToken: true,
+detectSessionInUrl: true,
+storage: window.localStorage,
+storageKey: "gagyeppeu-supabase-auth-v1"
+}
+}
+);
+}
+ 
+return true;
+}catch(e){
+console.error("SUPABASE CLIENT ERROR:", e);
+cloudStatus("Supabase 설정을 확인해주세요.");
+return false;
+}
 }
 async function ensureCloudClient(){
  const c=cloudCfg();
