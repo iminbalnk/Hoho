@@ -620,6 +620,7 @@ html, body, input, select, textarea, button, option {
    <label>금액</label><input type="number" id="inAmt" placeholder="숫자만 입력">
    <label>메모 (선택)</label><input type="text" id="inMemo" placeholder="예: 점심값">
    <button class="btn" onclick="addRecord()">저장하기</button>
+   <div id="manualRecentList" style="margin-top:14px"></div>
   </div>
  </div>
 
@@ -711,7 +712,7 @@ html, body, input, select, textarea, button, option {
   <div class="card">
    <div class="section-title"><div><div class="section-kicker">FUTURE ASSET</div><h3>미래자산 추가</h3></div><span class="pill">적금·연금·주식</span></div>
    
-   <label>자산 종류</label><select id="assetType"><option value="savings">적금통장</option><option value="pension">연금저축</option><option value="stock">주식계좌</option></select>
+   <label>자산 종류</label><select id="assetType"><option value="savings">적금</option><option value="stock">주식</option><option value="pension">연금저축</option></select>
    <label>자산 이름</label><input id="assetName" placeholder="예: 주택청약 적금 / 연금저축 / 주식계좌">
    <label>현재 평가금액</label><input type="number" id="assetValue" min="0" placeholder="현재 잔액 또는 평가금액">
    <label>계좌번호 <span class="hint">선택</span></label><input id="assetNo" inputmode="numeric" placeholder="예: 1234-5678-9012">
@@ -1125,7 +1126,7 @@ async function cloudPull(){
  cloudLoading=false; cloudStatus("클라우드 데이터를 불러왔어요.");
 }
 const won = n => Number(n).toLocaleString() + "원";
-const recordYM = d => String(d || "").slice(0,7);
+const getYM = d => String(d || "").slice(0,7);
 const nowYM = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
 const today = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 
@@ -1193,120 +1194,78 @@ function bulkGuessCategory(desc, type){
 }
 
 function bulkParseTransactions(raw){
-  // 문자형식도 날짜/금액을 찾아 하나의 거래로 정리
-  raw = String(raw || '').replace(/\u00a0/g,' ');
-  raw = raw.replace(/\[(?:Web발신|문자|SMS|카드승인|카드사용|승인)\]/g,'');
-  const text = String(raw || '').replace(/\r/g,'').trim();
-  if(!text) return [];
-
-  const lines = text.split('\n').map(x => x.trim()).filter(x => x !== '');
-  const dateRe = /^(\d{1,2})[./-](\d{1,2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?(?:\s*\|\s*(.*))?$/;
-  const amountRe = /([+-])\s*([\d,]+(?:\.\d+)?)\s*원?/;
-
-  const blocks = [];
-  let current = null;
-
+  const text=String(raw||'').replace(/\u00a0/g,' ').replace(/\r/g,'').trim();
+  if(!text)return [];
+  const fallbackDate=(document.getElementById('inDate')?.value||today());
+  const lines=text.split('\n').map(x=>x.trim()).filter(Boolean);
+  const yearNow=new Date().getFullYear();
+  const parseDate=(line, fallback=fallbackDate)=>{
+    let m=line.match(/(20\d{2})[.\/-](\d{1,2})[.\/-](\d{1,2})/);
+    if(m)return {date:`${m[1]}-${String(+m[2]).padStart(2,'0')}-${String(+m[3]).padStart(2,'0')}`,index:m.index};
+    m=line.match(/(?<!\d)(\d{1,2})[.\/-](\d{1,2})(?!\d)/);
+    if(m)return {date:`${yearNow}-${String(+m[1]).padStart(2,'0')}-${String(+m[2]).padStart(2,'0')}`,index:m.index};
+    m=line.match(/(?<!\d)(\d{1,2})일(?:\s*\([^)]+\)|\s*[가-힣]{1,3})?/);
+    if(m){const d=String(+m[1]).padStart(2,'0'); const base=new Date(fallback); return {date:`${base.getFullYear()}-${String(base.getMonth()+1).padStart(2,'0')}-${d}`,index:m.index};}
+    return {date:fallback,index:-1};
+  };
+  const clean=(s)=>String(s||'').replace(/[₩]/g,'').replace(/\b(?:zere|zero|e)\b/gi,' ').replace(/\s+/g,' ').trim();
+  const isRefund=(s)=>/(취소|승인취소|환불|부분취소|결제취소)/i.test(s);
+  const parseOne=(line,idx)=>{
+    const cleanLine=clean(line);
+    const d=parseDate(cleanLine);
+    const timeMatch=cleanLine.match(/(?:\b|\s)(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    const amountMatches=[...cleanLine.matchAll(/([+-])?\s*(\d{1,3}(?:,\d{3})+|\d+)\s*원/g)];
+    if(!amountMatches.length)return null;
+    // '누적 4,207,234원'은 잔액이므로 제외하고 실제 승인금액을 선택합니다.
+    const candidates=amountMatches.filter(m=>{
+      const before=cleanLine.slice(Math.max(0,m.index-10),m.index);
+      return !/누적(?:금액)?\s*$/i.test(before);
+    });
+    const am=(candidates.length?candidates:amountMatches)[0];
+    const amount=Number(String(am[2]).replace(/,/g,''));
+    if(!amount)return null;
+    const refund=isRefund(cleanLine);
+    let sign=am[1]||'';
+    if(refund)sign='+';
+    if(!sign)sign=/(입금|입금완료|받음|송금받|급여|환급)/.test(cleanLine)?'+':'-';
+    const type=sign==='+'?'income':'expense';
+    let desc=cleanLine;
+    desc=desc.replace(/^\[?(?:Web발신|문자|SMS)\]?\s*/i,'');
+    desc=desc.replace(/\b(?:20\d{2}[.\/-]\d{1,2}[.\/-]\d{1,2}|\d{1,2}[.\/-]\d{1,2}|\d{1,2}일(?:\s*[가-힣]{1,3})?)\b/g,' ');
+    if(timeMatch)desc=desc.replace(timeMatch[0],' ');
+    desc=desc.replace(/([+-])?\s*[\d]{1,3}(?:,\d{3})+\s*원?/g,' ');
+    desc=desc.replace(/\b(?:일시불|할부|승인|승인취소|취소|환불|누적(?:금액)?)[\s:]*/gi,' ');
+    desc=desc.replace(/\b\d+개월\b/g,' ');
+    desc=desc.replace(/\s+/g,' ').trim();
+    // 카드번호/고객명처럼 가맹점이 아닌 앞부분은 '승인' 뒤에서 가져옵니다.
+    const afterTime=timeMatch ? cleanLine.slice(timeMatch.index + timeMatch[0].length).trim() : '';
+    if(afterTime){
+      const merchant=afterTime.split(/\s+누적(?:금액)?\s*/i)[0].replace(/^[|:,-]+\s*/,'').trim();
+      if(merchant && !/^[+-]?\s*\d/.test(merchant)) desc=merchant;
+    }
+    const approval=cleanLine.match(/승인\s+(.+?)(?=\s+\d[\d,]*원|\s+일시불|\s+할부|\s+\d{1,2}[.\/-]\d{1,2})/i);
+    if(!afterTime && approval&&approval[1])desc=approval[1].trim();
+    if(!desc)desc=refund?'취소·환급 거래':'거래';
+    if(refund)desc=`${desc} · 취소·환급`;
+    return {id:'bulk_'+Date.now()+'_'+idx,date:d.date,time:timeMatch?timeMatch[0].trim():'',type,amt:amount,acctId:null,cat:refund?'환급':bulkGuessCategory(desc,type),memo:desc,source:'bulk'};
+  };
+  const results=[];
+  // 날짜가 붙은 거래내역은 날짜를 기준으로 블록을 만들고, 날짜 없는 줄은 직전 거래에 붙입니다.
+  let current=[];
+  const flush=()=>{if(current.length){const r=parseOne(current.join(' '),results.length);if(r)results.push(r);current=[];}};
   for(const line of lines){
-    const m = line.match(dateRe);
-    if(m){
-      if(current) blocks.push(current);
-      current = { month:+m[1], day:+m[2], hh:m[3] ? +m[3] : null, mm:m[4] ? +m[4] : null, ss:m[5] ? +m[5] : null, desc:(m[6] || '').trim(), lines:[] };
-    }else if(current){
-      current.lines.push(line);
-    }
+    const hasDate=/(20\d{2}[.\/-]\d{1,2}[.\/-]\d{1,2}|\d{1,2}[.\/-]\d{1,2}|\d{1,2}일(?:\s*[가-힣]{1,3})?)/.test(line);
+    if(hasDate && current.length)flush();
+    current.push(line);
+    // 한 줄 문자형식은 즉시 하나의 거래로 처리합니다.
+    if(/[+-]?\s*[\d]{1,3}(?:,\d{3})+\s*원/.test(line) && /(\d{1,2}[.\/-]\d{1,2}|\d{1,2}일)/.test(line))flush();
   }
-  if(current) blocks.push(current);
-
-  const year = new Date().getFullYear();
-
-  // 한 줄짜리 결제문자도 인식: [Web발신] 하나7*6*승인 임*경 94,000원 일시불 09/23 21:47 형제애 누적...
-  if(blocks.length===0){
-    const singleLineBlocks=[];
-    for(const line of lines){
-      const dm=line.match(/(\d{1,2})[./-](\d{1,2})\s+(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-      const am=line.match(/([+-])\s*([\d,]+(?:\.\d+)?)\s*원|([\d,]+(?:\.\d+)?)\s*원/);
-      if(!dm || !am) continue;
-      const amount=Number((am[2]||am[3]||'').replace(/,/g,''));
-      if(!amount) continue;
-      const beforeDate=line.slice(0,dm.index).replace(/^\[?Web발신\]?\s*/i,'').trim();
-      let afterDate=line.slice(dm.index+dm[0].length).trim();
-      afterDate=afterDate.replace(/^[-–—]\s*/,'').trim();
-      // 결제문자의 '누적' 잔액은 메모에서 제외하고 실제 가맹점명만 가져옵니다.
-      const descAfter=afterDate.split(/\s+누적(?:금액)?\s*/)[0].trim();
-      const desc=descAfter || beforeDate.replace(/.*?승인\s*/,'').trim() || beforeDate || '거래';
-      const sign=am[1] || (/입금|입금완료|받음|송금받|급여|환급/.test(line)?'+':'-');
-      singleLineBlocks.push({
-        month:+dm[1],day:+dm[2],hh:+dm[3],mm:+dm[4],ss:dm[5]?+dm[5]:null,
-        desc,lines:[],forcedAmount:amount,forcedSign:sign
-      });
-    }
-    if(singleLineBlocks.length){
-      return singleLineBlocks.map((b,idx)=>{
-        const type=b.forcedSign==='+'?'income':'expense';
-        return {
-          id:'bulk_'+Date.now()+'_'+idx,
-          date:`${year}-${String(b.month).padStart(2,'0')}-${String(b.day).padStart(2,'0')}`,
-          time:`${String(b.hh).padStart(2,'0')}:${String(b.mm).padStart(2,'0')}${b.ss==null?'':':'+String(b.ss).padStart(2,'0')}`,
-          type,amt:b.forcedAmount,acctId:typeof inAcct!=='undefined'?Number(inAcct):null,
-          cat:bulkGuessCategory(b.desc,type),memo:b.desc,source:'bulk'
-        };
-      });
-    }
+  flush();
+  // 날짜 없는 여러 줄 거래: 금액이 있는 줄만 별도 처리
+  if(!results.length){
+    for(const line of lines){const r=parseOne(line,results.length);if(r)results.push(r);}
   }
-
-  // 일반 문자: "09/17 17:54", "09.17 17:54", "09-17 17:54" + 다음 줄의 가맹점/금액
-  if(!blocks.length){
-    const smsDateRe=/(\d{1,2})[./-](\d{1,2})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/;
-    let cur=null;
-    for(const line of lines){
-      const dm=line.match(smsDateRe);
-      if(dm){
-        if(cur) blocks.push(cur);
-        cur={month:+dm[1],day:+dm[2],hh:dm[3]?+dm[3]:null,mm:dm[4]?+dm[4]:null,ss:dm[5]?+dm[5]:null,desc:'',lines:[]};
-        continue;
-      }
-      if(cur) cur.lines.push(line);
-    }
-    if(cur) blocks.push(cur);
-  }
-
-  return blocks.map((b, idx) => {
-    const joined = [b.desc, ...b.lines].join(' ');
-    let am = joined.match(amountRe);
-    if(!am){
-      const um = joined.match(/(\d{1,3}(?:,\d{3})+|\d+)\s*원/);
-      if(!um) return null;
-      const unsignedAmount=Number(um[1].replace(/,/g,''));
-      const sign=/입금|입금완료|받음|송금받|급여|입금액/.test(joined) ? '+' : '-';
-      am=[null,sign,String(unsignedAmount)];
-    }
-
-    const sign = am[1];
-    const amount = Number(am[2].replace(/,/g,''));
-    if(!amount) return null;
-
-    const date = `${year}-${String(b.month).padStart(2,'0')}-${String(b.day).padStart(2,'0')}`;
-    const time = b.hh == null ? '' : `${String(b.hh).padStart(2,'0')}:${String(b.mm).padStart(2,'0')}${b.ss == null ? '' : ':'+String(b.ss).padStart(2,'0')}`;
-
-    let desc = b.desc;
-    if(!desc){
-      desc = b.lines.find(x => !/^[+-]?\s*[\d,]+(?:\.\d+)?\s*원?$/.test(x) && !/^\d+(?:\.\d+)?%$/.test(x)) || '거래';
-    }
-    desc = desc.replace(/\s+/g,' ').trim();
-
-    const type = sign === '+' ? 'income' : 'expense';
-    return {
-      id: 'bulk_' + Date.now() + '_' + idx,
-      date,
-      time,
-      type,
-      amt: amount,
-      acctId: typeof inAcct !== 'undefined' ? Number(inAcct) : null,
-      cat: bulkGuessCategory(desc, type),
-      memo: desc,
-      source: 'bulk'
-    };
-  }).filter(Boolean);
+  return results;
 }
 
 function bulkRenderPreview(){
@@ -1477,6 +1436,7 @@ function addRecord(){
  const ac=accounts.find(a=>a.id===Number(acctId));
  if(ac) ac.bal += (curType==="income"?amt:-amt);
  save();
+ renderManualRecent();
  document.getElementById("inAmt").value="";
  document.getElementById("inMemo").value="";
  const smsEl2=document.getElementById("smsBox"); if(smsEl2) smsEl2.value="";
@@ -1652,7 +1612,7 @@ function editAsset(id){
  const a=assets.find(x=>x.id===id);if(!a)return;
  const m=document.createElement("div");m.className="modal-bg";m.id="assetEditModal";
  m.innerHTML=`<div class="modal"><h3>자산 수정</h3>
- <label>자산 종류</label><select id="edAt"><option value="savings" ${a.type==="savings"?"selected":""}>적금통장</option><option value="pension" ${a.type==="pension"?"selected":""}>연금저축</option><option value="stock" ${a.type==="stock"?"selected":""}>주식계좌</option></select>
+ <label>자산 종류</label><select id="edAt"><option value="savings" ${a.type==="savings"?"selected":""}>적금</option><option value="stock" ${a.type==="stock"?"selected":""}>주식</option><option value="pension" ${a.type==="pension"?"selected":""}>연금저축</option></select>
  <label>자산 이름</label><input id="edAn" value="${bulkEsc(a.name)}">
  <label>현재 평가금액</label><input type="number" id="edAv" value="${Number(a.value)||0}">
  <label>계좌번호 <span class="hint">선택</span></label><input id="edAno" value="${bulkEsc(a.accountNo||"")}" inputmode="numeric">
@@ -1727,7 +1687,7 @@ function deleteAssetReturn(id){
 }
 function renderAssetReturns(){
  const sel=document.getElementById("returnAsset");
- if(sel)sel.innerHTML=assets.length?assets.map(a=>`<option value="${a.id}">${a.type==="savings"?"적금통장":a.type==="pension"?"연금저축":"주식계좌"} · ${bulkEsc(a.name)}</option>`).join("") :`<option value="">계좌를 먼저 추가하세요</option>`;
+ if(sel)sel.innerHTML=assets.length?assets.map(a=>`<option value="${a.id}">${a.type==="savings"?"적금":a.type==="stock"?"주식":"연금저축"} · ${bulkEsc(a.name)}</option>`).join("") :`<option value="">계좌를 먼저 추가하세요</option>`;
  const mo=document.getElementById("returnMonth"); if(mo&&!mo.value)mo.value=nowYM();
  const list=document.getElementById("assetReturnList"); if(!list)return;
  const rows=[...assetReturns].sort((a,b)=>String(b.month).localeCompare(String(a.month)));
@@ -1737,31 +1697,22 @@ function renderAssetReturns(){
 function renderAssets(){
  const list=document.getElementById("assetList"),total=document.getElementById("assetTotal");if(!list||!total)return;
  total.textContent=won(assets.reduce((s,a)=>s+Number(a.value||0),0));
- const typeOrder=["savings","stock","pension"];
- const ownerOrder=["쀼","남편","아내"];
- const typeName={savings:"적금",stock:"주식",pension:"연금저축"};
- let html="";
- typeOrder.forEach(type=>{
-   const group=assets.filter(a=>(a.type||"savings")===type).sort((a,b)=>{
-     const ao=ownerOrder.indexOf(a.owner||"쀼"), bo=ownerOrder.indexOf(b.owner||"쀼");
-     return (ao<0?99:ao)-(bo<0?99:bo);
-   });
-   if(!group.length)return;
-   html+=`<div style="margin:16px 0 8px;font-size:13px;font-weight:800;color:var(--sub);text-align:left">${typeName[type]}</div>`;
-   html+=group.map(a=>`<div class="acct-box" onclick="editAsset(${a.id})" style="cursor:pointer">
+ const typeRank={savings:0,stock:1,pension:2};
+ const sortedAssets=[...assets].sort((a,b)=>(typeRank[a.type]??99)-(typeRank[b.type]??99) || ownerRank(a.owner)-ownerRank(b.owner) || String(a.name||"").localeCompare(String(b.name||""),"ko"));
+ list.innerHTML=sortedAssets.length?sortedAssets.map(a=>`
+     <div class="acct-box" onclick="editAsset(${a.id})" style="cursor:pointer">
        <div class="acct-top">
          <div>
-           <div class="acct-name">${bulkEsc(a.owner||"쀼")} · ${bulkEsc(a.name)}</div>
+           <div class="acct-name">${a.type==="savings"?"적금":a.type==="stock"?"주식":"연금저축"} · ${bulkEsc(a.name)}</div>
            <div class="acct-use">${bulkEsc(a.memo||"용도 미입력")}</div>
-           ${a.accountNo?`<div class="account-no">${bulkEsc(a.accountNo)} <button class="copy-mini" onclick="event.stopPropagation();copyAccountNo('${String(a.accountNo).replace(/'/g,"\\'")}')">복사</button></div>`:""}
+           ${a.accountNo?`<div class="account-no">${bulkEsc(a.accountNo)} <button class="copy-mini" onclick="event.stopPropagation();copyAccountNo('${String(a.accountNo).replace(/'/g,"\'")}')">복사</button></div>`:""}
+           <div class="hint">관리주체 · ${bulkEsc(a.owner||"쀼")}</div>
          </div>
          <button class="del" onclick="event.stopPropagation();deleteAsset(${a.id})">삭제</button>
        </div>
        <div class="acct-bal">${won(a.value)}</div>
-     </div>`).join("");
- });
- list.innerHTML=html||'<div class="empty">적금, 주식, 연금저축을 추가해보세요</div>';
- const sel=document.getElementById("arAsset");if(sel)sel.innerHTML=assets.length?assets.map(a=>`<option value="${a.id}">${a.type==="savings"?"적금":a.type==="pension"?"연금저축":"주식"} · ${bulkEsc(a.owner||"쀼")} · ${bulkEsc(a.name)}</option>`).join(""):'<option value="">자산을 먼저 추가하세요</option>';
+     </div>`).join(""):'<div class="empty">적금통장, 연금저축, 주식계좌를 추가해보세요</div>';
+ const sel=document.getElementById("arAsset");if(sel)sel.innerHTML=assets.length?assets.map(a=>`<option value="${a.id}">${a.type==="savings"?"적금":a.type==="stock"?"주식":"연금저축"} · ${bulkEsc(a.name)}</option>`).join(""):'<option value="">자산을 먼저 추가하세요</option>';
  const ar=document.getElementById("assetRecurList");if(ar)ar.innerHTML=assetRecurring.length?assetRecurring.map(r=>{const f=accounts.find(a=>a.id===r.from),a=assets.find(x=>x.id===r.assetId);return `<div class="row"><div><b>${f?bulkEsc(f.name):"?"} → ${a?bulkEsc(a.name):"?"}</b><div class="hint">매월 ${r.day}일 · ${r.startDate||"오늘부터"}${r.endDate?" ~ "+r.endDate:""}${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b>${won(r.amt)}</b> <button class="del" onclick="event.stopPropagation();delAssetRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 자산 자동이체가 없어요</div>';
 }
 /* ================= 백업/복원 ================= */
@@ -1799,7 +1750,7 @@ function drawDonut(){
  // 1) 이번 달 '지출'만 카테고리별로 합산
  const byCat = {};
  records
-   .filter(r => r.type === "expense" && recordYM(r.date) === m)
+   .filter(r => r.type === "expense" && getYM(r.date) === m)
    .forEach(r => {
      byCat[r.cat] = (byCat[r.cat] || 0) + r.amt;
    });
@@ -1887,7 +1838,7 @@ function drawTrend(){
  // 각 달의 해당 카테고리 지출 합계
  const data = months.map(mon =>
    records
-     .filter(r => r.type==="expense" && r.cat===cat && recordYM(r.date)===mon)
+     .filter(r => r.type==="expense" && r.cat===cat && getYM(r.date)===mon)
      .reduce((s,r)=>s+r.amt, 0)
  );
 
@@ -1941,8 +1892,8 @@ function quickExpense(){setType("expense");showTab("input");document.getElementB
 function quickIncome(){setType("income");showTab("input");document.getElementById("inDate").value=today();document.getElementById("inAmt").focus();}
 function renderDashboard(){
   const m=viewYM;
-  const ins=records.filter(r=>r.type==="income"&&recordYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
-  const outs=records.filter(r=>r.type==="expense"&&recordYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
+  const ins=records.filter(r=>r.type==="income"&&getYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
+  const outs=records.filter(r=>r.type==="expense"&&getYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
   const bal=accounts.reduce((s,a)=>s+a.bal,0), budget=getBudget(nowYM());
   document.getElementById("heroMonth").textContent=monthLabel(m);document.getElementById("heroMonthBalLabel").textContent=`${monthLabel(m)} 잔액`;document.getElementById("heroBal").textContent=won(bal);
   document.getElementById("heroIn").textContent=won(ins);document.getElementById("heroOut").textContent=won(outs);
@@ -1956,28 +1907,10 @@ function renderDashboard(){
 }
 
 
-/* ===== 통장 정렬 ===== */
-let accountSortMode = localStorage.getItem("accountSortMode") || "default";
+/* ===== 자산 표시 순서 ===== */
+function ownerRank(owner){return ({"쀼":0,"공동":0,"남편":1,"아내":2}[String(owner||"쀼")] ?? 99);}
 function getSortedAccounts(){
-  const arr=[...accounts];
-  switch(accountSortMode){
-    case "name":
-      return arr.sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"ko"));
-    case "balanceDesc":
-      return arr.sort((a,b)=>Number(b.bal||0)-Number(a.bal||0));
-    case "balanceAsc":
-      return arr.sort((a,b)=>Number(a.bal||0)-Number(b.bal||0));
-    case "owner":
-      const ownerOrder={"쀼":0,"남편":1,"아내":2};
-      return arr.sort((a,b)=>(ownerOrder[String(a.owner||"쀼")]??99)-(ownerOrder[String(b.owner||"쀼")]??99));
-    default:
-      return arr;
-  }
-}
-function setAccountSortMode(mode){
-  accountSortMode=mode||"default";
-  localStorage.setItem("accountSortMode",accountSortMode);
-  render();
+  return [...accounts].sort((a,b)=>ownerRank(a.owner)-ownerRank(b.owner) || String(a.name||"").localeCompare(String(b.name||""),"ko"));
 }
 
 /* ================= 화면 전체 갱신 ================= */
@@ -1986,21 +1919,16 @@ function render(){
  renderDashboard();
 
  // 상단 요약 3종
- const inSum  = records.filter(r=>r.type==="income" && recordYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
- const outSum = records.filter(r=>r.type==="expense"&& recordYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
+ const inSum  = records.filter(r=>r.type==="income" && getYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
+ const outSum = records.filter(r=>r.type==="expense"&& getYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
  const total  = accounts.reduce((s,a)=>s+Number(a.bal||0),0) + assets.reduce((s,a)=>s+Number(a.value||0),0);
  const _sumIn=document.getElementById("sumIn"); if(_sumIn) _sumIn.textContent=won(inSum);
  const _sumOut=document.getElementById("sumOut"); if(_sumOut) _sumOut.textContent=won(outSum);
  const _sumBal=document.getElementById("sumBal"); if(_sumBal) _sumBal.textContent=won(total);
 
  // 통장 목록
- const ownerOrder={"쀼":0,"남편":1,"아내":2};
- const sortedAccounts=[...accounts].sort((a,b)=>{
-   const ao=ownerOrder[String(a.owner||"쀼")]??99, bo=ownerOrder[String(b.owner||"쀼")]??99;
-   return ao-bo;
- });
  document.getElementById("acctList").innerHTML = accounts.length
-   ? sortedAccounts.map(a=>`
+   ? getSortedAccounts().map(a=>`
      <div class="acct-box" onclick="editAccount(${a.id})" style="cursor:pointer">
        <div class="acct-top">
          <div>
@@ -2034,6 +1962,7 @@ function render(){
   ie.innerHTML=arr.length?arr.map(r=>{const a=accounts.find(x=>x.id===r.acctId);return `<div class="row"><div><b>${r.type==="income"?"수입":"지출"} · ${bulkEsc(r.cat||"기타")}</b><div class="hint">${a?bulkEsc(a.name):"?"} · 매월 ${r.day}일${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b class="${r.type==="income"?"amt-plus":"amt-minus"}">${r.type==="income"?"+":"-"}${won(r.amt)}</b> <button class="del" onclick="event.stopPropagation();delIncomeExpenseRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 반복 수입·지출이 없어요</div>';
  }
  renderAssets();
+ renderManualRecent();
  renderExpenseHistory();
  // 반복이체 목록
  const recurList=document.getElementById("recurList"); if(recurList) {
@@ -2071,29 +2000,63 @@ drawTrend();
 function renderExpenseHistory(){
  const box=document.getElementById("expenseHistoryList");
  if(!box)return;
- // 붙여넣기·직접입력·자동이체로 실제 생성된 지출을 모두 표시합니다.
- // 통장 간 자동이체(자산 이동)는 지출내역에서 제외합니다.
- const list=records.filter(r=>
-   r.type==="expense" &&
-   !r.assetTransfer &&
-   r.type!=="move"
- ).slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")));
- box.innerHTML=list.length
-   ? list.map(r=>{
-       const ac=accounts.find(a=>a.id===r.acctId);
-       const sourceLabel=r.source==="bulk"?"붙여넣기":r.source==="recurring"?"자동이체":"직접입력";
-       return `<div class="row" onclick="openEdit(${r.id})">
-         <div>
-           <b>${bulkEsc(r.cat||"기타")}</b>
-           <div class="direct-memo">${bulkEsc(r.memo||"메모 없음")}</div>
-           <div class="hint">${r.date} · ${ac?bulkEsc(ac.name):"삭제됨"} · ${sourceLabel}</div>
-         </div>
-         <span class="amt-minus">-${won(r.amt)}</span>
+ const list=(records||[]).filter(r=>r.type==="expense" && !r.assetTransfer && r.type!=="move")
+   .slice().sort((a,b)=>String(b.date||"").localeCompare(String(a.date||"")) || Number(b.id||0)-Number(a.id||0));
+ if(!list.length){
+   box.innerHTML='<div class="empty">지출 내역이 없어요.</div>';
+   return;
+ }
+ const byMonth={};
+ list.forEach(r=>{
+   const month=getYM(r.date)||nowYM();
+   (byMonth[month] ||= []).push(r);
+ });
+ box.innerHTML=Object.keys(byMonth).sort().reverse().map(month=>{
+   const rows=byMonth[month];
+   const monthTotal=rows.reduce((sum,r)=>sum+Number(r.amt||0),0);
+   const byDate={};
+   rows.forEach(r=>{(byDate[r.date] ||= []).push(r);});
+   const dates=Object.keys(byDate).sort().reverse();
+   return `<div class="expense-month-block">
+     <div class="expense-month-head"><b>${monthLabel(month)}</b><strong>-${won(monthTotal)}</strong></div>
+     ${dates.map(date=>{
+       const dayTotal=byDate[date].reduce((sum,r)=>sum+Number(r.amt||0),0);
+       return `<div class="expense-date-group">
+         <div class="expense-date-head"><span>${date}</span><b>-${won(dayTotal)}</b></div>
+         ${byDate[date].map(r=>{
+           const ac=accounts.find(a=>a.id===r.acctId);
+           return `<div class="row expense-history-row" onclick="openEdit(${r.id})">
+             <div>
+               <b class="direct-cat">${bulkEsc(r.cat||"기타")}</b>
+               <div class="direct-memo">${bulkEsc(r.memo||"메모 없음")}</div>
+               <div class="hint">${ac?bulkEsc(ac.name):"통장·카드 미지정"}${r.source==="recurring"?" · 자동이체":""}</div>
+             </div>
+             <span class="amt-minus">-${won(r.amt)}</span>
+           </div>`;
+         }).join("")}
        </div>`;
-     }).join("")
-   : `<div class="empty">아직 지출 내역이 없어요</div>`;
+     }).join("")}
+   </div>`;
+ }).join("");
 }
 
+function renderManualRecent(){
+ const box=document.getElementById("manualRecentList");
+ if(!box)return;
+ const list=(records||[]).filter(r=>r.source==="manual" && r.type!=="move").slice().sort((a,b)=>Number(b.id||0)-Number(a.id||0)).slice(0,5);
+ box.innerHTML=list.length?`<div class="section-title" style="margin-bottom:8px"><div><div class="section-kicker">RECENT</div><h3>최근 직접입력</h3></div></div>`+
+   list.map(r=>`<div class="row"><div><b>${bulkEsc(r.cat||"기타")}</b><div class="hint">${r.date}${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b class="${r.type==="income"?"amt-plus":"amt-minus"}">${r.type==="income"?"+":"-"}${won(r.amt)}</b> <button class="del" onclick="event.stopPropagation();deleteManualRecent(${r.id})">삭제</button></span></div>`).join(""):'<div class="empty">최근 직접입력 내역이 없어요.</div>';
+}
+function deleteManualRecent(id){
+ const r=records.find(x=>x.id===id && x.source==="manual");
+ if(!r)return;
+ if(!confirm("이 직접입력 내역을 삭제할까요?"))return;
+ const ac=accounts.find(a=>a.id===r.acctId);
+ if(ac) ac.bal -= (r.type==="income"?Number(r.amt):-Number(r.amt));
+ records=records.filter(x=>x.id!==id);
+ save();
+ renderManualRecent(); renderExpenseHistory(); render();
+}
 
 /* ================= 탭 전환 ================= */
 function showTab(name){
@@ -2346,7 +2309,7 @@ function renderAnalysis(){
  if(cm){
    const months=[];const base=new Date();
    for(let i=5;i>=0;i--){const d=new Date(base.getFullYear(),base.getMonth()-i,1);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);}
-   const vals=months.map(m=>records.filter(r=>r.type==="expense"&&recordYM(r.date)===m).reduce((a,r)=>a+Number(r.amt||0),0));
+   const vals=months.map(m=>records.filter(r=>r.type==="expense"&&getYM(r.date)===m).reduce((a,r)=>a+Number(r.amt||0),0));
    const max=Math.max(...vals,1);
    cm.innerHTML=months.map((m,i)=>`<div class="monthly-bar-item"><span class="monthly-bar-month">${m.slice(5)}월</span><div class="monthly-bar-bg"><div class="monthly-bar-fill" style="width:${Math.round(vals[i]/max*100)}%"></div></div><b class="monthly-bar-amount">${won(vals[i])}</b></div>`).join("");
  }
