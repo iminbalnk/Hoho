@@ -928,7 +928,7 @@ const COLORS = ["#1b5e42","#2a9d8f","#e07a5f","#f2cc8f","#81b29a","#6d597a","#b5
 let cloudSyncing = false;
 let cloudLoading = false;
 window.__gagyeppeuSupabaseClient = null;
-let householdId = localStorage.getItem("householdId") || "";
+let gagyeppeuHouseholdId = localStorage.getItem("gagyeppeuHouseholdId") || "";
 let householdShareCode = localStorage.getItem("householdShareCode") || "";
 
 // household_id는 Supabase UUID 형식인지 확인합니다.
@@ -1084,7 +1084,7 @@ async function cloudLogin(){
   document.getElementById("sbPassword").value="";
   cloudStatus("로그인됨");
   await updateCloudUser();
-  if(householdId) await cloudPull();
+  if(gagyeppeuHouseholdId) await cloudPull();
  }catch(e){
   console.error("LOGIN ERROR:",e);
   alert("로그인 실패\\n\\n"+(e?.message||String(e)));
@@ -1115,8 +1115,8 @@ async function cloudCreateHousehold(){
  const code=typeof data==="string"?data:(data?.share_code||data?.code||"");
  const hid=typeof data==="object"?(data?.household_id||data?.id||""):"";
  if(!code || !hid){alert("가계부 정보를 받지 못했어요. Supabase SQL 설정을 확인해주세요.");return;}
- householdId=hid; householdShareCode=code;
- localStorage.setItem("householdId",householdId); localStorage.setItem("householdShareCode",householdShareCode);
+ gagyeppeuHouseholdId=hid; householdShareCode=code;
+ localStorage.setItem("gagyeppeuHouseholdId",gagyeppeuHouseholdId); localStorage.setItem("householdShareCode",householdShareCode);
  const inp=document.getElementById("householdIdInput");if(inp)inp.value=code;
  const box=document.getElementById("createdShareCode");if(box){box.style.display="block";box.innerHTML=`가계부 키<br><strong style="font-size:1.35em;letter-spacing:.08em">${bulkEsc(code)}</strong><br><span class="hint">이 키를 배우자에게 보내주세요.</span>`;}
  const hi=document.getElementById("householdInfo");if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
@@ -1128,22 +1128,22 @@ async function cloudJoinHousehold(){
  if(!id){alert("가계부 키를 입력해주세요.");return;}
  const {data,error}=await window.__gagyeppeuSupabaseClient.rpc("join_household",{p_share_code:id});
  if(error){alert("가계부 참여 실패\n\n"+error.message);return;}
- householdId=id;localStorage.setItem("householdId",id);
+ gagyeppeuHouseholdId=id;localStorage.setItem("gagyeppeuHouseholdId",id);
  const hi=document.getElementById("householdInfo");if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
  await cloudPull();
 }
 function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules(),categories:{income:CATS.income,expense:CATS.expense}};}
 async function cloudPush(){
- if(cloudSyncing||cloudLoading||!householdId)return;
+ if(cloudSyncing||cloudLoading||!gagyeppeuHouseholdId)return;
  if(!window.__gagyeppeuSupabaseClient && !setCloudClient())return;
  cloudSyncing=true;
  try{
    const {data:userData}=await window.__gagyeppeuSupabaseClient.auth.getUser(); if(!userData?.user) return;
-   if(!HOUSEHOLD_UUID_RE.test(String(householdId))) throw new Error("가계부 연결 ID가 올바르지 않아요. 다시 로그인해주세요.");
-   const {data:member,error:memberError}=await window.__gagyeppeuSupabaseClient.from("household_members").select("household_id").eq("user_id",userData.user.id).eq("household_id",householdId).maybeSingle();
+   if(!HOUSEHOLD_UUID_RE.test(String(gagyeppeuHouseholdId))) throw new Error("가계부 연결 ID가 올바르지 않아요. 다시 로그인해주세요.");
+   const {data:member,error:memberError}=await window.__gagyeppeuSupabaseClient.from("household_members").select("household_id").eq("user_id",userData.user.id).eq("household_id",gagyeppeuHouseholdId).maybeSingle();
    if(memberError) throw memberError;
    if(!member) throw new Error("현재 로그인한 계정이 이 가계부에 연결되어 있지 않아요.");
-   const {error}=await window.__gagyeppeuSupabaseClient.from("household_data").upsert({household_id:householdId,data:cloudPayload(),updated_at:new Date().toISOString()},{onConflict:"household_id"});
+   const {error}=await window.__gagyeppeuSupabaseClient.from("household_data").upsert({household_id:gagyeppeuHouseholdId,data:cloudPayload(),updated_at:new Date().toISOString()},{onConflict:"household_id"});
    if(error) throw error;
    cloudStatus(" 저장됨 · "+new Date().toLocaleTimeString());
  }catch(e){
@@ -1154,11 +1154,11 @@ async function cloudPush(){
 }
 async function cloudPull(){
  if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
- if(householdId && !HOUSEHOLD_UUID_RE.test(String(householdId))){
-   if(!householdShareCode){ householdShareCode=householdId; localStorage.setItem("householdShareCode",householdShareCode); }
-   householdId=""; localStorage.removeItem("householdId");
+ if(gagyeppeuHouseholdId && !HOUSEHOLD_UUID_RE.test(String(gagyeppeuHouseholdId))){
+   if(!householdShareCode){ householdShareCode=gagyeppeuHouseholdId; localStorage.setItem("householdShareCode",householdShareCode); }
+   gagyeppeuHouseholdId=""; localStorage.removeItem("gagyeppeuHouseholdId");
  }
- if(!householdId && householdShareCode){
+ if(!gagyeppeuHouseholdId && householdShareCode){
    const {data:userData}=await window.__gagyeppeuSupabaseClient.auth.getUser();
    if(!userData?.user)return;
    const {data,error}=await window.__gagyeppeuSupabaseClient.rpc("join_household",{p_share_code:householdShareCode});
@@ -1167,12 +1167,12 @@ async function cloudPull(){
    const hid=result?.household_id || result?.id || "";
    const code=result?.share_code || householdShareCode;
    if(!hid || !HOUSEHOLD_UUID_RE.test(String(hid))){alert("가계부의 실제 연결 정보를 받지 못했어요.");return;}
-   householdId=String(hid); householdShareCode=code;
-   localStorage.setItem("householdId",householdId);
+   gagyeppeuHouseholdId=String(hid); householdShareCode=code;
+   localStorage.setItem("gagyeppeuHouseholdId",gagyeppeuHouseholdId);
    localStorage.setItem("householdShareCode",householdShareCode);
  }
- if(!householdId || !HOUSEHOLD_UUID_RE.test(String(householdId)))return;
- const {data,error}=await window.__gagyeppeuSupabaseClient.from("household_data").select("data").eq("household_id",householdId).maybeSingle();
+ if(!gagyeppeuHouseholdId || !HOUSEHOLD_UUID_RE.test(String(gagyeppeuHouseholdId)))return;
+ const {data,error}=await window.__gagyeppeuSupabaseClient.from("household_data").select("data").eq("household_id",gagyeppeuHouseholdId).maybeSingle();
  if(error){alert("클라우드 불러오기 실패: "+error.message);return;}
  if(!data?.data)return;
  const d=data.data; cloudLoading=true;
@@ -2516,7 +2516,7 @@ async function refreshApp(){
        if(data.session){
          cloudStatus(" 연결됨 · 로그인 상태");
          updateCloudUser();
-         if(householdId) await cloudPull();
+         if(gagyeppeuHouseholdId) await cloudPull();
        }
      }).catch(e=>console.error("AUTH INIT ERROR:",e));
    }
