@@ -2676,7 +2676,14 @@ async function refreshApp(){
 }
 
 
-async function restoreAuthSession(){
+let __restoreInFlight=null;
+function restoreAuthSession(){
+ if(!__restoreInFlight){
+  __restoreInFlight=_restoreAuthSessionImpl().finally(()=>{__restoreInFlight=null;});
+ }
+ return __restoreInFlight;
+}
+async function _restoreAuthSessionImpl(){
  window.__gagyeppeuAuthReason="";
  try{
   if(!window.__gagyeppeuSupabaseClient)return null;
@@ -2731,7 +2738,7 @@ function setupAuthListener(){
       cloudStatus(" 연결됨 · 로그인 상태");
     }else if(event === "SIGNED_OUT"){
       window.__gagyeppeuSignedOut=true;
-      clearAuthBackup();
+      // 직접 로그아웃(cloudLogout)일 때만 백업을 지웁니다. 일시적인 오류로 SDK가 세션을 지워도 백업으로 다시 복원할 수 있게 둡니다.
       cloudStatus("로그아웃됨");
     }
     updateCloudUser().catch(()=>{});
@@ -2739,6 +2746,7 @@ function setupAuthListener(){
 }
 
 async function initAuth(){
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
   // CDN 스크립트가 늦거나 한 번 실패해도 최대 3번까지 다시 불러옵니다.
   let ok=false;
   for(let i=0;i<3&&!ok;i++){
