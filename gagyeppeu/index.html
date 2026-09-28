@@ -557,15 +557,8 @@ html, body, input, select, textarea, button, option {
 <div id="tab-input">
 <div id="dashboard">
   <div class="card">
-    <div class="month-nav">
-      <button onclick="changeMonth(-1)">‹</button><div class="month-title" id="monthTitle"></div><button onclick="changeMonth(1)">›</button>
-    </div>
-    <div class="budget-head"><b id="budgetLabel">예산</b><span class="budget-val" id="budgetText">설정 안 함</span></div>
+    <div class="budget-head"><b id="budgetLabel">당월 예산</b><span class="budget-val" id="budgetText">설정 안 함</span></div>
     <div class="progress" id="budgetProgress"><div id="budgetFill" style="width:0%"></div></div>
-    <div class="budget-editor" style="margin-top:12px">
-      <input id="dashboardBudgetInput" type="number" min="0" step="10000" inputmode="numeric" placeholder="이 달의 예산을 입력하세요">
-      <button class="btn small" style="margin-top:0;flex:0 0 auto" onclick="setBudget()">저장</button>
-    </div>
   </div>
   <div class="hero">
     <div class="eyebrow" id="heroMonth">26.09</div>
@@ -696,7 +689,7 @@ html, body, input, select, textarea, button, option {
   </div>
   <div class="card">
    <div class="section-title"><div><div class="section-kicker">FUTURE ASSET</div><h3>미래자산 추가</h3></div><span class="pill">적금·연금·주식</span></div>
-   <p class="muted">적금과 연금저축은 통장처럼 잔액과 매월 자동납입으로 관리하고, 주식은 주식계좌 전체 평가금액으로 관리해요.</p>
+   
    <label>자산 종류</label><select id="assetType"><option value="savings">적금통장</option><option value="pension">연금저축</option><option value="stock">주식계좌</option></select>
    <label>자산 이름</label><input id="assetName" placeholder="예: 주택청약 적금 / 연금저축 / 주식계좌">
    <label>현재 평가금액</label><input type="number" id="assetValue" min="0" placeholder="현재 잔액 또는 평가금액">
@@ -721,9 +714,9 @@ html, body, input, select, textarea, button, option {
  <div class="card">
   <div class="section-title"><div><div class="section-kicker">BUDGET</div><h3>월별 예산</h3></div></div>
   <div class="month-nav"><button class="btn sub" onclick="changeAnalysisMonth(-1)">‹</button><b id="budgetMonth"></b><button class="btn sub" onclick="changeAnalysisMonth(1)">›</button></div>
-  <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
-   <input id="analysisBudgetInput" type="number" min="0" step="10000" placeholder="예산 금액" style="flex:1">
-   <button class="btn" onclick="saveAnalysisBudget()">예산 저장</button>
+  <div style="margin-top:12px">
+   <input id="analysisBudgetInput" type="number" min="0" step="10000" placeholder="예산 입력">
+   <button class="btn" style="margin-top:8px" onclick="saveAnalysisBudget()">저장</button>
   </div>
   <div id="analysisBudgetOverview" style="margin-top:14px"></div>
  </div>
@@ -756,27 +749,15 @@ html, body, input, select, textarea, button, option {
 <div id="tab-settings" class="hide">
  <div class="card">
    <div class="section-kicker">ACCOUNT</div><h3>가계쀼 로그인</h3>
-   <p class="hint">각자 자기 계정으로 로그인하고, 같은 가계부 키를 공유해서 두 분만 함께 사용할 수 있어요.</p>
-   <div id="loginModeTabs" class="return-tabs" style="margin-bottom:14px">
-     <button class="active" type="button" onclick="setAuthMode('login')">로그인</button>
-     <button type="button" onclick="setAuthMode('signup')">회원가입</button>
+   <p class="hint">로그인 정보는 이 기기에 저장되어 다음 방문 때 자동으로 로그인돼요.</p>
+   <div id="loginFields">
+    <label>이메일</label><input id="sbEmail" type="email" autocomplete="email" placeholder="이메일">
+    <label>비밀번호</label><input id="sbPassword" type="password" autocomplete="current-password" placeholder="비밀번호">
+    <button id="authSubmitBtn" class="btn" style="margin-top:10px" onclick="cloudLogin()">로그인</button>
    </div>
-   <label>이메일</label><input id="sbEmail" type="email" autocomplete="email" placeholder="이메일">
-   <label>비밀번호</label><input id="sbPassword" type="password" autocomplete="current-password" placeholder="비밀번호">
-   <button id="authSubmitBtn" class="btn" style="margin-top:10px" onclick="authSubmit()">로그인</button>
-   <button id="authLogoutBtn" class="btn sub" style="margin-top:8px;display:none" onclick="cloudLogout()">로그아웃</button>
+   <button id="authLogoutBtn" class="btn sub" style="margin-top:10px;display:none" onclick="cloudLogout()">로그아웃</button>
    <div id="cloudUser" class="hint" style="margin-top:10px"></div>
    <div id="cloudStatus" class="hint" style="margin-top:6px">로그인하지 않았어요</div>
- </div>
- <div class="card">
-   <div class="section-kicker">OUR HOUSEHOLD</div><h3>우리 쀼자산</h3>
-   <p class="hint">가계부를 만든 뒤 표시되는 키를 배우자에게 보내주세요. 한 가계부에는 최대 2명만 참여할 수 있어요.</p>
-   <button class="btn" onclick="cloudCreateHousehold()">우리 가계부 만들기</button>
-   <div id="createdShareCode" class="analysis-total" style="margin-top:12px;display:none"></div>
-   <label style="margin-top:14px">가계부 키로 참여</label>
-   <input id="householdIdInput" placeholder="예: Q7M4-K2PX" autocomplete="off">
-   <button class="btn sub" style="margin-top:8px" onclick="cloudJoinHousehold()">가계부에 참여하기</button>
-   <div id="householdInfo" class="hint" style="margin-top:10px"></div>
  </div>
  <div class="card">
    <h3>백업 / 복원</h3>
@@ -1019,9 +1000,7 @@ async function cloudLogin(){
 }
 async function cloudLogout(){
  if(sb) await sb.auth.signOut();
- householdId=""; householdShareCode=""; localStorage.removeItem("householdId"); localStorage.removeItem("householdShareCode");
- const hi=document.getElementById("householdInfo");if(hi)hi.textContent="";
- const code=document.getElementById("createdShareCode");if(code)code.style.display="none";
+ // 로그아웃해도 연결된 가계부 정보는 유지합니다. 다시 로그인하면 자동으로 불러옵니다.
  cloudStatus("로그아웃됨");
  updateCloudUser();
 }
@@ -1030,10 +1009,10 @@ async function updateCloudUser(){
  const {data}=await sb.auth.getUser();
  const el=document.getElementById("cloudUser");
  const logout=document.getElementById("authLogoutBtn");
- const submit=document.getElementById("authSubmitBtn");
+ const fields=document.getElementById("loginFields");
  if(el)el.textContent=data?.user?`로그인: ${data.user.email}`:"로그인하지 않았어요.";
  if(logout)logout.style.display=data?.user?"block":"none";
- if(submit)submit.style.display=data?.user?"none":"block";
+ if(fields)fields.style.display=data?.user?"none":"block";
 }
 async function cloudCreateHousehold(){
  if(!sb && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
@@ -1076,14 +1055,29 @@ async function cloudPush(){
 }
 async function cloudPull(){
  if(!sb && !setCloudClient()){alert("먼저 Supabase 연결하기를 눌러주세요.");return;}
- if(!householdId){alert("먼저 가계부를 만들거나 참여해주세요.");return;}
+ if(householdId && !HOUSEHOLD_UUID_RE.test(String(householdId))){
+   if(!householdShareCode){ householdShareCode=householdId; localStorage.setItem("householdShareCode",householdShareCode); }
+   householdId=""; localStorage.removeItem("householdId");
+ }
+ if(!householdId && householdShareCode){
+   const {data:userData}=await sb.auth.getUser();
+   if(!userData?.user)return;
+   const {data,error}=await sb.rpc("join_household",{p_share_code:householdShareCode});
+   if(error){alert("가계부 연결 정보를 확인하지 못했어요.\n\n"+error.message);return;}
+   const result=Array.isArray(data)?data[0]:data;
+   const hid=result?.household_id || result?.id || "";
+   const code=result?.share_code || householdShareCode;
+   if(!hid || !HOUSEHOLD_UUID_RE.test(String(hid))){alert("가계부의 실제 연결 정보를 받지 못했어요.");return;}
+   householdId=String(hid); householdShareCode=code;
+   localStorage.setItem("householdId",householdId);
+   localStorage.setItem("householdShareCode",householdShareCode);
+ }
+ if(!householdId || !HOUSEHOLD_UUID_RE.test(String(householdId)))return;
  const {data,error}=await sb.from("household_data").select("data").eq("household_id",householdId).maybeSingle();
  if(error){alert("클라우드 불러오기 실패: "+error.message);return;}
- if(!data?.data){alert("아직 클라우드 데이터가 없어요. 현재 기기의 데이터를 먼저 저장할까요?");await cloudPush();return;}
+ if(!data?.data)return;
  const d=data.data; cloudLoading=true;
  records=d.records||[];accounts=d.accounts||[];recurring=d.recurring||[];assets=d.assets||[];assetRecurring=d.assetRecurring||[];assetReturns=d.assetReturns||[];assetGoal=d.assetGoal||{target:0};assetGoals=d.assetGoals||{"2027":0,"2028":0,"2029":0};monthlyBudgets=d.monthlyBudgets||{};
- normalizeData();
- localStorage.setItem("assetReturns",JSON.stringify(assetReturns)); localStorage.setItem("assetGoal",JSON.stringify(assetGoal)); localStorage.setItem("assetGoals",JSON.stringify(assetGoals)); localStorage.setItem("monthlyBudgets",JSON.stringify(monthlyBudgets));
  if(d.autoCategoryRules)localStorage.setItem(AUTO_CAT_KEY,JSON.stringify(d.autoCategoryRules));
  if(d.categories && Array.isArray(d.categories.income) && Array.isArray(d.categories.expense)){
    CATS.income=d.categories.income.map(x=>String(x||"").trim()).filter(Boolean);
@@ -1091,11 +1085,11 @@ async function cloudPull(){
    localStorage.setItem("categoryConfig",JSON.stringify({income:CATS.income,expense:CATS.expense}));
    saveCustomCategories();
  }
- localSaveOnly(); cloudLoading=false;
- buildChips();buildAcctSelect();renderAssets();render();
- cloudStatus(" 클라우드 데이터를 불러왔어요.");
+ normalizeData(); normalizeRecords(); localSaveOnly();
+ buildChips(); buildAcctSelect(); renderAssets(); render();
+ try{renderAnalysis();}catch(e){console.error("ANALYSIS PULL ERROR:",e);}
+ cloudLoading=false; cloudStatus("클라우드 데이터를 불러왔어요.");
 }
-
 const won = n => Number(n).toLocaleString() + "원";
 const ym  = d => String(d || "").slice(0,7);
 const nowYM = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`; };
@@ -1839,19 +1833,12 @@ function getBudget(month=viewYM){
   if(month===nowYM()) return Number(localStorage.getItem("monthlyBudget")||0);
   return 0;
 }
-function setBudget(){
-  const input=document.getElementById("dashboardBudgetInput");
-  const raw=input ? String(input.value||"").replace(/,/g,"") : "";
-  const n=Number(raw);
-  if(!Number.isFinite(n)||n<0){alert("예산 금액을 확인해주세요.");return;}
-  monthlyBudgets[viewYM]=n;
-  save(); renderDashboard(); renderAnalysis();
-}
+function setBudget(){}
 function saveAnalysisBudget(){
   const n=Number(document.getElementById("analysisBudgetInput")?.value||0);
   if(!Number.isFinite(n)||n<0){alert("예산 금액을 확인해주세요.");return;}
   monthlyBudgets[analysisYM()]=n; save(); renderDashboard(); renderAnalysis();
-  alert(`${monthLabel(analysisYM())} 예산을 저장했어요.`);
+  alert("저장했어요.");
 }
 function quickExpense(){setType("expense");showTab("input");document.getElementById("inDate").value=today();document.getElementById("inAmt").focus();}
 function quickIncome(){setType("income");showTab("input");document.getElementById("inDate").value=today();document.getElementById("inAmt").focus();}
@@ -1859,13 +1846,11 @@ function renderDashboard(){
   const m=viewYM;
   const ins=records.filter(r=>r.type==="income"&&ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
   const outs=records.filter(r=>r.type==="expense"&&ym(r.date)===m).reduce((s,r)=>s+r.amt,0);
-  const bal=accounts.reduce((s,a)=>s+a.bal,0), budget=getBudget();
+  const bal=accounts.reduce((s,a)=>s+a.bal,0), budget=getBudget(nowYM());
   document.getElementById("heroMonth").textContent=monthLabel(m);document.getElementById("heroMonthBalLabel").textContent=`${monthLabel(m)} 잔액`;document.getElementById("heroBal").textContent=won(bal);
   document.getElementById("heroIn").textContent=won(ins);document.getElementById("heroOut").textContent=won(outs);
-  document.getElementById("heroMonthBal").textContent=won(ins-outs);document.getElementById("monthTitle").textContent=monthLabel(m);document.getElementById("budgetLabel").textContent=`${monthLabel(m)} 예산`;
+  document.getElementById("heroMonthBal").textContent=won(ins-outs);document.getElementById("monthTitle").textContent=monthLabel(m);document.getElementById("budgetLabel").textContent="당월 예산";
   const bt=document.getElementById("budgetText"),bf=document.getElementById("budgetFill"),bp=document.getElementById("budgetProgress");
-  const budgetInput=document.getElementById("dashboardBudgetInput");
-  if(budgetInput) budgetInput.value = budget ? budget : "";
   if(bt&&bf&&bp){
     if(budget){const pct=Math.round(outs/budget*100);bt.textContent=`${won(outs)} / ${won(budget)} (${pct}%)`;bf.style.width=Math.min(pct,100)+"%";bp.classList.toggle("over",outs>budget);}
     else{bt.textContent="설정 안 함";bf.style.width="0%";bp.classList.remove("over");}
@@ -1886,7 +1871,8 @@ function getSortedAccounts(){
     case "balanceAsc":
       return arr.sort((a,b)=>Number(a.bal||0)-Number(b.bal||0));
     case "owner":
-      return arr.sort((a,b)=>String(a.owner||"쀼").localeCompare(String(b.owner||"쀼"),"ko"));
+      const ownerOrder={"쀼":0,"남편":1,"아내":2};
+      return arr.sort((a,b)=>(ownerOrder[String(a.owner||"쀼")]??99)-(ownerOrder[String(b.owner||"쀼")]??99));
     default:
       return arr;
   }
