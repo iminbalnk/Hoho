@@ -607,10 +607,6 @@ html, body, input, select, textarea, button, option {
    <h3>최근 내역 <span style="font-size:12px;color:var(--sub);font-weight:400">(클릭하면 수정)</span></h3>
    <div id="recentList"></div>
   </div>
-  <div class="card">
-   <h3>직접입력 지출내역</h3>
-   <div id="directExpenseList"></div>
-  </div>
  </div>
 
  <div id="input-sub-auto" class="subpane hide">
@@ -660,7 +656,17 @@ html, body, input, select, textarea, button, option {
  </div>
 </div>
 
-<!-- ===== 탭2: 통장 ===== -->
+<!-- ===== 탭2: 지출내역 ===== -->
+<div id="tab-expenses" class="hide">
+ <div class="card">
+  <div class="section-title">
+   <div><div class="section-kicker">EXPENSES</div><h3>지출내역</h3></div>
+  </div>
+  <div id="expenseHistoryList"></div>
+ </div>
+</div>
+
+<!-- ===== 탭3: 통장 ===== -->
 <div id="tab-accounts" class="hide">
  <div class="subtabs">
   <button class="active" onclick="showAssetPane('current',this)"> 현재자산</button>
@@ -782,7 +788,8 @@ html, body, input, select, textarea, button, option {
 <!-- ===== 하단 내비 ===== -->
 <div class="navbar">
  <button id="btn-input" class="on" onclick="showTab('input')"><span class="ico">️</span>입력</button>
- <button id="btn-accounts" onclick="showTab('accounts')"><span class="ico"></span>통장</button>
+ <button id="btn-expenses" onclick="showTab('expenses')"><span class="ico"></span>지출</button>
+ <button id="btn-accounts" onclick="showTab('accounts')"><span class="ico"></span>자산</button>
  <button id="btn-report" onclick="showTab('report')"><span class="ico"></span>분석</button>
  <button id="btn-settings" onclick="showTab('settings')"><span class="ico"></span>설정</button>
 </div>
@@ -1426,7 +1433,7 @@ function addRecord(){
  if(!date){alert("날짜를 선택하세요");return;}
  if(!acctId){alert("통장·카드를 먼저 추가하세요");return;}
  if(!amt||amt<=0){alert("금액을 올바르게 입력하세요");return;}
- records.push({id:Date.now(),date,type:curType,cat:curCat,amt,memo,acctId:Number(acctId)});
+ records.push({id:Date.now(),date,type:curType,cat:curCat,amt,memo,acctId:Number(acctId),source:"manual"});
  const ac=accounts.find(a=>a.id===Number(acctId));
  if(ac) ac.bal += (curType==="income"?amt:-amt);
  save();
@@ -1951,22 +1958,6 @@ function render(){
      }).join("")
    : `<div class="empty">아직 내역이 없어요</div>`;
 
- // 직접입력으로 저장한 지출만 별도로 계속 보여줍니다. 자동 지출/이체는 제외합니다.
- const directExpenses = records.filter(r=>r.type==="expense" && r.source!=="recurring" && !r.assetTransfer).slice(-20).reverse();
- const directBox=document.getElementById("directExpenseList");
- if(directBox) directBox.innerHTML = directExpenses.length
-   ? directExpenses.map(r=>{
-       const ac=accounts.find(a=>a.id===r.acctId);
-       return `<div class="row" onclick="openEdit(${r.id})">
-         <div><b class="direct-cat">${bulkEsc(r.cat||"기타")}</b>
-           <div class="direct-memo">${bulkEsc(r.memo||"메모 없음")}</div>
-           <div class="hint">${r.date} · ${ac?bulkEsc(ac.name):"삭제됨"}</div>
-         </div>
-         <span class="amt-minus">-${won(r.amt)}</span>
-       </div>`;
-     }).join("")
-   : `<div class="empty">직접 입력한 지출이 없어요</div>`;
-
  // 통장 목록
  const sortEl=document.getElementById("accountSort");
  if(sortEl) sortEl.value=accountSortMode;
@@ -2037,17 +2028,47 @@ drawTrend();
  renderAnalysis();
 }
 
+/* ================= 지출내역 ================= */
+function renderExpenseHistory(){
+ const box=document.getElementById("expenseHistoryList");
+ if(!box)return;
+ // 직접입력으로 저장한 지출만 이 탭에서 보여줍니다.
+ // 붙여넣기(bulk), 자동이체(recurring), 통장 간 이체/자산이동은 제외합니다.
+ const list=records.filter(r=>
+   r.type==="expense" &&
+   r.source!=="bulk" &&
+   r.source!=="recurring" &&
+   !r.assetTransfer &&
+   r.type!=="move"
+ ).slice().reverse();
+ box.innerHTML=list.length
+   ? list.map(r=>{
+       const ac=accounts.find(a=>a.id===r.acctId);
+       return `<div class="row" onclick="openEdit(${r.id})">
+         <div>
+           <b class="direct-cat">${bulkEsc(r.cat||"기타")}</b>
+           <div class="direct-memo">${bulkEsc(r.memo||"메모 없음")}</div>
+           <div class="hint">${r.date} · ${ac?bulkEsc(ac.name):"삭제됨"}</div>
+         </div>
+         <span class="amt-minus">-${won(r.amt)}</span>
+       </div>`;
+     }).join("")
+   : `<div class="empty">직접 입력한 지출이 없어요</div>`;
+}
+
 /* ================= 탭 전환 ================= */
 function showTab(name){
  const dash=document.getElementById("dashboard");
- if(dash) dash.classList.toggle("hide", name==="accounts");
- ["input","accounts","report","settings"].forEach(t=>{
+ if(dash) dash.classList.toggle("hide", name!=="input");
+ ["input","expenses","accounts","report","settings"].forEach(t=>{
    const tab=document.getElementById("tab-"+t), btn=document.getElementById("btn-"+t);
    if(tab) tab.classList.toggle("hide", t!==name);
    if(btn) btn.classList.toggle("on", t===name);
  });
  try{
-   if(name==="accounts"){
+   if(name==="expenses"){
+     renderExpenseHistory();
+   }else if(name==="accounts"){
      // 통장 탭을 열 때마다 최신 계좌 데이터를 다시 그려요.
      buildAcctSelect();
      renderAssets();
