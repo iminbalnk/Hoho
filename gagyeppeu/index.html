@@ -889,6 +889,7 @@ function normalizeRecords(){
 }
 normalizeRecords();
 normalizeData();
+purgeFutureAutomaticEffects();
 
 const CATS = {
  income:  ["급여","용돈","이자","환급","기타"],
@@ -1439,6 +1440,31 @@ function setType(t){
 }
 
 /* ================= 통장 선택 목록 ================= */
+
+function purgeFutureAutomaticEffects(){
+  const todayStr=today();
+  const removed=[];
+  records=(records||[]).filter(r=>{
+    const future=String(r.date||'')>todayStr;
+    const automatic=r.source==='recurring' || r.source==='assetRecurring' || r.assetTransfer===true || String(r.memo||'').includes('(자동)') || String(r.memo||'').includes('(자산 자동이체)');
+    if(future && automatic){ removed.push(r); return false; }
+    return true;
+  });
+  // 과거 버전에서 미래 자동거래가 이미 잔액에 반영된 경우 그 효과를 되돌립니다.
+  removed.forEach(r=>{
+    const amt=Number(r.amt)||0;
+    if(r.type==='move'){
+      const from=accounts.find(a=>a.name===r.from || Number(a.id)===Number(r.from));
+      const to=accounts.find(a=>a.name===r.to || Number(a.id)===Number(r.to));
+      if(from) from.bal += amt;
+      if(to) to.bal -= amt;
+    }else{
+      const ac=accounts.find(a=>Number(a.id)===Number(r.acctId));
+      if(ac) ac.bal += r.type==='expense' ? amt : -amt;
+    }
+  });
+}
+
 function buildAcctSelect(){
  const opts=accounts.length?accounts.map(a=>`<option value="${a.id}">${bulkEsc(a.name)}</option>`).join(""):'<option value="">통장을 먼저 추가하세요</option>';
  ["inAcct","tFrom","tTo","rFrom","rTo","recurAcct","arFrom"].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=opts;});
@@ -1572,11 +1598,11 @@ function doTransfer(){
  document.getElementById("tAmt").value="";document.getElementById("tMemo").value="";
  render(); alert("이체 완료");
 }
-function executeTransfer(from,to,amt,memo,date){
+function executeTransfer(from,to,amt,memo,date,source="manual"){
  const f=accounts.find(a=>a.id===from), t=accounts.find(a=>a.id===to);
  if(!f||!t) return false;
  f.bal-=amt; t.bal+=amt;
- records.push({id:Date.now()+Math.random(),date,type:"move",amt,memo,from:f.name,to:t.name});
+ records.push({id:Date.now()+Math.random(),date,type:"move",amt,memo,from:f.name,to:t.name,source});
  save(); return true;
 }
 
@@ -1655,7 +1681,7 @@ function runRecurring(){
    records.push({id:Date.now()+Math.random(),date:d,type:r.type,cat:r.cat||"기타",amt:Number(r.amt),memo:(r.memo||"")+" (자동)",acctId:r.acctId,source:"recurring"});
    ac.bal+=r.type==="income"?Number(r.amt):-Number(r.amt);r.lastRun=todayStr;
   }else{
-   if(executeTransfer(r.from,r.to,r.amt,(r.memo||"")+" (자동)",d)){r.lastRun=todayStr;}
+   if(executeTransfer(r.from,r.to,r.amt,(r.memo||"")+" (자동)",d,"recurring")){r.lastRun=todayStr;}
   }
  });
  save();
@@ -1708,7 +1734,7 @@ function runAssetRecurring(){
   if(Number(r.day)!==day || r.lastRun===todayStr)return;
   const ac=accounts.find(a=>a.id===r.from),asset=assets.find(a=>a.id===r.assetId);if(!ac||!asset)return;
   const amt=Number(r.amt);ac.bal-=amt;asset.value=(Number(asset.value)||0)+amt;
-  records.push({id:Date.now()+Math.random(),date:key+"-"+String(Math.min(Number(r.day),lastDay)).padStart(2,"0"),type:"move",amt,memo:(r.memo||"")+" (자산 자동이체)",from:ac.name,to:asset.name,assetTransfer:true});
+  records.push({id:Date.now()+Math.random(),date:key+"-"+String(Math.min(Number(r.day),lastDay)).padStart(2,"0"),type:"move",amt,memo:(r.memo||"")+" (자산 자동이체)",from:ac.name,to:asset.name,assetTransfer:true,source:"assetRecurring"});
   r.lastRun=todayStr;
  });
  save();
