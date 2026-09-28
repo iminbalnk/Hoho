@@ -987,26 +987,80 @@ async function cloudCreateHousehold(){
  if(!sb && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
  const {data:userData}=await sb.auth.getUser();
  if(!userData?.user){alert("먼저 로그인해주세요.");return;}
+
+ // 이미 이 기기에 연결된 가계부가 있으면 새 가계부를 만들지 않습니다.
+ if(householdId && householdShareCode){
+   const inp=document.getElementById("householdIdInput");
+   if(inp) inp.value=householdShareCode;
+   alert("이미 연결된 가계부가 있어요.\n\n가계부 키는 변경할 수 없습니다.");
+   return;
+ }
+
  const {data,error}=await sb.rpc("create_household",{p_name:"우리 쀼자산"});
  if(error){alert("가계부 만들기 실패\n\n"+error.message);return;}
  const code=typeof data==="string"?data:(data?.share_code||data?.code||"");
  const hid=typeof data==="object"?(data?.household_id||data?.id||""):"";
  if(!code || !hid){alert("가계부 정보를 받지 못했어요. Supabase SQL 설정을 확인해주세요.");return;}
- householdId=hid; householdShareCode=code;
- localStorage.setItem("householdId",householdId); localStorage.setItem("householdShareCode",householdShareCode);
+ householdId=hid;
+ householdShareCode=code;
+ localStorage.setItem("householdId",householdId);
+ localStorage.setItem("householdShareCode",householdShareCode);
  const inp=document.getElementById("householdIdInput");if(inp)inp.value=code;
- const box=document.getElementById("createdShareCode");if(box){box.style.display="block";box.innerHTML=`가계부 키<br><strong style="font-size:1.35em;letter-spacing:.08em">${bulkEsc(code)}</strong><br><span class="hint">이 키를 배우자에게 보내주세요.</span>`;}
- const hi=document.getElementById("householdInfo");if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
+ const box=document.getElementById("createdShareCode");
+ if(box){
+   box.style.display="block";
+   box.innerHTML=`가계부 키<br><strong style="font-size:1.35em;letter-spacing:.08em">${bulkEsc(code)}</strong><br><span class="hint">이 키를 배우자에게 보내주세요.</span>`;
+ }
+ const hi=document.getElementById("householdInfo");
+ if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
  await cloudPull();
 }
+
 async function cloudJoinHousehold(){
  if(!sb && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
+
+ const {data:userData}=await sb.auth.getUser();
+ if(!userData?.user){alert("먼저 로그인해주세요.");return;}
+
+ // 이미 연결된 가계부가 있으면 다른 가계부에 참여하지 않습니다.
+ if(householdId && householdShareCode){
+   const inp=document.getElementById("householdIdInput");
+   if(inp) inp.value=householdShareCode;
+   alert("이미 가계부에 연결되어 있어요.\n\n기존 가계부를 삭제/탈퇴하기 전에는\n다른 가계부에 참여할 수 없습니다.");
+   return;
+ }
+
  const id=(document.getElementById("householdIdInput")?.value||"").trim().toUpperCase();
  if(!id){alert("가계부 키를 입력해주세요.");return;}
+
  const {data,error}=await sb.rpc("join_household",{p_share_code:id});
  if(error){alert("가계부 참여 실패\n\n"+error.message);return;}
- householdId=id;localStorage.setItem("householdId",id);
- const hi=document.getElementById("householdInfo");if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
+
+ // id는 공유키(예: 88F8B116), hid는 실제 household UUID입니다.
+ const code=data?.share_code || id;
+ const hid=data?.household_id || data?.id || "";
+ if(!hid){
+   alert("가계부 연결 정보를 받지 못했어요. Supabase SQL 설정을 확인해주세요.");
+   return;
+ }
+
+ // ★ householdId에는 반드시 UUID를 저장하고,
+ //    공유키는 householdShareCode에 별도로 저장합니다.
+ householdId=hid;
+ householdShareCode=code;
+ localStorage.setItem("householdId",householdId);
+ localStorage.setItem("householdShareCode",householdShareCode);
+
+ const inp=document.getElementById("householdIdInput");
+ if(inp) inp.value=householdShareCode;
+ const hi=document.getElementById("householdInfo");
+ if(hi)hi.textContent="우리 쀼자산에 연결됐어요 · 최대 2명";
+ const box=document.getElementById("createdShareCode");
+ if(box){
+   box.style.display="block";
+   box.innerHTML=`가계부 키<br><strong style="font-size:1.35em;letter-spacing:.08em">${bulkEsc(householdShareCode)}</strong><br><span class="hint">배우자와 함께 사용하는 가계부입니다.</span>`;
+ }
+
  await cloudPull();
 }
 function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules(),categories:{income:CATS.income,expense:CATS.expense}};}
