@@ -1006,7 +1006,14 @@ function setCloudClient(){
  if(!window.supabase) return false;
  try{
    if(!window.__gagyeppeuSupabaseClient){
-     window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:window.localStorage}});
+     try{
+       const defaultAuthKey="sb-fegoelbzlomrthtpbafb-auth-token";
+       const stableAuthKey="gagyeppeu-supabase-auth";
+       if(!localStorage.getItem(stableAuthKey) && localStorage.getItem(defaultAuthKey)){
+         localStorage.setItem(stableAuthKey,localStorage.getItem(defaultAuthKey));
+       }
+       window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:window.localStorage,storageKey:stableAuthKey}});
+     }catch(e){ throw e; }
    }
    return true;
  }catch(e){ console.error("SUPABASE CLIENT ERROR:",e); cloudStatus("Supabase 설정을 확인해주세요."); return false; }
