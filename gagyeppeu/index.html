@@ -109,6 +109,7 @@ font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',system-ui,san
 .hero .eyebrow{font-size:12px;opacity:.78;margin-bottom:5px}.hero .balance{font-size:30px;font-weight:800;letter-spacing:-.7px}
 .hero-sub{display:flex;gap:10px;margin-top:16px}.hero-stat{flex:1;background:rgba(255,255,255,.12);border-radius:13px;padding:10px 12px}
 .hero-stat .slabel{font-size:11px;opacity:.75}.hero-stat .sval{font-size:14px;font-weight:700;margin-top:3px}
+.hero-stat.balance-negative{background:#f6d6df!important;border-color:#e8a9bb!important}.hero-stat.balance-negative .slabel,.hero-stat.balance-negative .sval{color:#8f3f59!important;opacity:1!important}
 .quick{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}.quick button{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:15px;padding:13px;text-align:left;cursor:pointer;box-shadow:var(--shadow)}
 .quick .qico{font-size:19px;display:block;margin-bottom:5px}.quick b{font-size:14px}.quick span{display:block;color:var(--sub);font-size:11px;margin-top:2px}
 .budget-head{display:flex;justify-content:space-between;align-items:end}.budget-val{font-size:13px;color:var(--sub)}
@@ -539,7 +540,9 @@ body,input,select,textarea,button,h1,h2,h3,h4,h5,h6,.btn,.navbar button,.chip,la
   .account-toolbar select{min-width:120px!important;}
 }
 
-.direct-memo{color:#fff;font-size:12px;margin-top:3px}.direct-cat{display:block}.direct-expense-list{}
+.direct-memo{color:#fff;font-size:18px;font-weight:700;line-height:1.35;margin-top:0}.direct-cat{display:block}.direct-expense-list{}
+.expense-history-row{display:grid!important;grid-template-columns:minmax(0,1.7fr) minmax(70px,.7fr) auto;gap:12px;align-items:center;text-align:left!important}.expense-history-row .expense-content{min-width:0;text-align:left!important}.expense-history-row .expense-category{font-size:14px;color:#e9e1d6;font-weight:500;text-align:left!important;white-space:nowrap}.expense-history-row .expense-meta{font-size:12px;color:var(--sub);margin-top:4px}.expense-history-row .amt-minus{font-size:16px;font-weight:700;white-space:nowrap}.expense-history-row .direct-memo{color:#fff;font-size:18px;font-weight:700;white-space:normal;word-break:keep-all}.expense-history-row .direct-memo.empty-memo{font-weight:500;color:#fff}.btn.tiny{padding:5px 8px;font-size:11px;border-radius:8px}
+@media(max-width:420px){.expense-history-row{grid-template-columns:minmax(0,1.5fr) 62px auto;gap:8px}.expense-history-row .direct-memo{font-size:17px}.expense-history-row .expense-category{font-size:13px}.expense-history-row .amt-minus{font-size:15px}}
 
 /* 분석 그래프 */
 .donut-wrap{display:flex;flex-direction:column;align-items:center;gap:18px;padding:8px 0 4px;}
@@ -569,14 +572,13 @@ html, body, input, select, textarea, button, option {
 
 <div class="head">
  <h2 id="title">가계쀼</h2>
- <button class="app-refresh-btn" type="button" onclick="refreshApp()" aria-label="새로고침" title="새로고침">↻</button>
 </div>
 
 <!-- ===== 탭1: 입력 ===== -->
 <div id="tab-input">
 <div id="dashboard">
   <div class="card">
-    <div class="budget-head"><b id="budgetLabel">당월 예산</b><span class="budget-val" id="budgetText">설정 안 함</span></div>
+    <div class="budget-head"><b id="budgetLabel">26.09 예산</b><span class="budget-val" id="budgetText">설정 안 함</span></div>
     <div class="progress" id="budgetProgress"><div id="budgetFill" style="width:0%"></div></div>
   </div>
   <div class="hero">
@@ -585,7 +587,7 @@ html, body, input, select, textarea, button, option {
     <div class="hero-sub">
       <div class="hero-stat"><div class="slabel">수입</div><div class="sval" id="heroIn">0원</div></div>
       <div class="hero-stat"><div class="slabel">지출</div><div class="sval" id="heroOut">0원</div></div>
-      <div class="hero-stat"><div class="slabel" id="heroMonthBalLabel">26.09 잔액</div><div class="sval" id="heroMonthBal">0원</div></div>
+      <div class="hero-stat" id="heroMonthBalStat"><div class="slabel" id="heroMonthBalLabel">잔액</div><div class="sval" id="heroMonthBal">0원</div></div>
     </div>
   </div>
 </div>
@@ -781,6 +783,9 @@ html, body, input, select, textarea, button, option {
    <button id="authLogoutBtn" class="btn sub" style="margin-top:10px;display:none" onclick="cloudLogout()">로그아웃</button>
    <div id="cloudUser" class="hint" style="margin-top:10px"></div>
    <div id="cloudStatus" class="hint" style="margin-top:6px">로그인하지 않았어요</div>
+ </div>
+ <div class="card">
+   <button class="app-refresh-btn" type="button" onclick="refreshApp()" aria-label="새로고침" title="새로고침" style="width:100%;font-size:15px;padding:12px">↻ 새로고침</button>
  </div>
  <div class="card">
    <h3>백업 / 복원</h3>
@@ -1565,6 +1570,39 @@ function addRecurring(){
  recurring.push({id:Date.now()+Math.random(),kind:"transfer",from,to,amt,day,startDate,endDate,memo,lastRun:""});save();render();
  document.getElementById("rAmt").value="";document.getElementById("rMemo").value="";
 }
+function editRecurring(id){
+ const r=recurring.find(x=>x.id===id); if(!r)return;
+ const isIE=r.kind==="incomeExpense", isTransfer=r.kind==="transfer";
+ const title=isIE?"고정 수입·지출 수정":isTransfer?"통장 간 자동이체 수정":"자동납입 수정";
+ const modal=document.createElement("div"); modal.className="modal-bg"; modal.id="recurringEditModal";
+ const esc=v=>bulkEsc(v||"");
+ const acctOpts=accounts.map(a=>`<option value="${a.id}" ${isIE&&Number(r.acctId)===Number(a.id)?"selected":""}>${esc(a.name)}</option>`).join("");
+ const fromOpts=accounts.map(a=>`<option value="${a.id}" ${isTransfer&&Number(r.from)===Number(a.id)?"selected":""}>${esc(a.name)}</option>`).join("");
+ const toOpts=accounts.map(a=>`<option value="${a.id}" ${isTransfer&&Number(r.to)===Number(a.id)?"selected":""}>${esc(a.name)}</option>`).join("");
+ const cats=(CATS[isIE?r.type:"expense"]||[]).map(c=>`<option ${c===(r.cat||"")?"selected":""}>${esc(c)}</option>`).join("");
+ modal.innerHTML=`<div class="modal"><h3>${title}</h3>
+ ${isIE?`<label>종류</label><select id="erType"><option value="expense" ${r.type==="expense"?"selected":""}>고정 지출</option><option value="income" ${r.type==="income"?"selected":""}>고정 수입</option></select><label>통장·카드</label><select id="erAcct">${acctOpts}</select>`:""}
+ ${isTransfer?`<label>출금 통장</label><select id="erFrom">${fromOpts}</select><label>입금 통장</label><select id="erTo">${toOpts}</select>`:""}
+ <label>금액</label><input type="number" id="erAmt" value="${Number(r.amt)||0}" min="1">
+ <label>매월 실행일</label><input type="number" id="erDay" value="${Number(r.day)||1}" min="1" max="31">
+ <label>시작일</label><input type="date" id="erStart" value="${r.startDate||today()}">
+ <label>종료일 <span class="hint">선택</span></label><input type="date" id="erEnd" value="${r.endDate||""}">
+ ${isIE?`<label>카테고리</label><select id="erCat">${cats}</select>`:""}
+ <label>메모</label><input type="text" id="erMemo" value="${esc(r.memo)}">
+ <div class="row gap8" style="margin-top:14px"><button class="btn secondary" onclick="document.getElementById('recurringEditModal')?.remove()">취소</button><button class="btn" onclick="saveRecurringEdit(${id})">저장</button></div></div>`;
+ document.body.appendChild(modal);
+ if(isIE)document.getElementById("erType")?.addEventListener("change",()=>{const type=document.getElementById("erType").value,cat=document.getElementById("erCat");if(cat)cat.innerHTML=(CATS[type]||[]).map(c=>`<option>${esc(c)}</option>`).join("");});
+}
+function saveRecurringEdit(id){
+ const r=recurring.find(x=>x.id===id); if(!r)return;
+ const amt=Number(document.getElementById("erAmt")?.value),day=Number(document.getElementById("erDay")?.value),startDate=document.getElementById("erStart")?.value||today(),endDate=document.getElementById("erEnd")?.value||"";
+ if(!amt||amt<=0||!day||day<1||day>31){alert("금액과 실행일을 확인하세요.");return;}
+ if(endDate&&endDate<startDate){alert("종료일은 시작일 이후로 설정해주세요.");return;}
+ r.amt=amt;r.day=day;r.startDate=startDate;r.endDate=endDate;r.memo=document.getElementById("erMemo")?.value.trim()||"";r.lastRun="";
+ if(r.kind==="incomeExpense"){r.type=document.getElementById("erType").value;r.acctId=Number(document.getElementById("erAcct").value);r.cat=document.getElementById("erCat").value;}
+ else if(r.kind==="transfer"){r.from=Number(document.getElementById("erFrom").value);r.to=Number(document.getElementById("erTo").value);if(!r.from||!r.to||r.from===r.to){alert("서로 다른 통장을 선택하세요.");return;}}
+ save();document.getElementById("recurringEditModal")?.remove();render();
+}
 function delRecurring(id){if(!confirm("이 반복이체를 삭제할까요?"))return;recurring=recurring.filter(r=>r.id!==id);save();render();}
 function updateRecurringCategory(){
  const type=document.getElementById("recurType")?.value||"expense", el=document.getElementById("recurCat");
@@ -1895,9 +1933,9 @@ function renderDashboard(){
   const ins=records.filter(r=>r.type==="income"&&getYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
   const outs=records.filter(r=>r.type==="expense"&&getYM(r.date)===m).reduce((s,r)=>s+r.amt,0);
   const bal=accounts.reduce((s,a)=>s+a.bal,0), budget=getBudget(nowYM());
-  document.getElementById("heroMonth").textContent=monthLabel(m);document.getElementById("heroMonthBalLabel").textContent=`${monthLabel(m)} 잔액`;document.getElementById("heroBal").textContent=won(bal);
+  document.getElementById("heroMonth").textContent=monthLabel(m);document.getElementById("heroMonthBalLabel").textContent="잔액";document.getElementById("heroBal").textContent=won(bal);
   document.getElementById("heroIn").textContent=won(ins);document.getElementById("heroOut").textContent=won(outs);
-  document.getElementById("heroMonthBal").textContent=won(ins-outs);const _monthTitle=document.getElementById("monthTitle");if(_monthTitle)_monthTitle.textContent=monthLabel(m);const _budgetLabel=document.getElementById("budgetLabel");if(_budgetLabel)_budgetLabel.textContent="당월 예산";
+  const monthBalance=ins-outs;document.getElementById("heroMonthBal").textContent=won(monthBalance);const monthBalStat=document.getElementById("heroMonthBalStat");if(monthBalStat)monthBalStat.classList.toggle("balance-negative",monthBalance<0);const _monthTitle=document.getElementById("monthTitle");if(_monthTitle)_monthTitle.textContent=monthLabel(m);const _budgetLabel=document.getElementById("budgetLabel");if(_budgetLabel)_budgetLabel.textContent=`${monthLabel(nowYM())} 예산`;
   const bt=document.getElementById("budgetText"),bf=document.getElementById("budgetFill"),bp=document.getElementById("budgetProgress");
   if(bt&&bf&&bp){
     if(budget){const pct=Math.round(outs/budget*100);bt.textContent=`${won(outs)} / ${won(budget)} (${pct}%)`;bf.style.width=Math.min(pct,100)+"%";bp.classList.toggle("over",outs>budget);}
@@ -1959,7 +1997,7 @@ function render(){
  const ie=document.getElementById("incomeExpenseRecurList");
  if(ie){
   const arr=recurring.filter(r=>r.kind==="incomeExpense");
-  ie.innerHTML=arr.length?arr.map(r=>{const a=accounts.find(x=>x.id===r.acctId);return `<div class="row"><div><b>${r.type==="income"?"수입":"지출"} · ${bulkEsc(r.cat||"기타")}</b><div class="hint">${a?bulkEsc(a.name):"?"} · 매월 ${r.day}일${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b class="${r.type==="income"?"amt-plus":"amt-minus"}">${r.type==="income"?"+":"-"}${won(r.amt)}</b> <button class="del" onclick="event.stopPropagation();delIncomeExpenseRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 반복 수입·지출이 없어요</div>';
+  ie.innerHTML=arr.length?arr.map(r=>{const a=accounts.find(x=>x.id===r.acctId);return `<div class="row"><div><b>${r.type==="income"?"수입":"지출"} · ${bulkEsc(r.cat||"기타")}</b><div class="hint">${a?bulkEsc(a.name):"?"} · 매월 ${r.day}일 · 시작 ${r.startDate||"오늘"}${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b class="${r.type==="income"?"amt-plus":"amt-minus"}">${r.type==="income"?"+":"-"}${won(r.amt)}</b> <button class="btn tiny" onclick="event.stopPropagation();editRecurring(${r.id})">수정</button> <button class="del" onclick="event.stopPropagation();delIncomeExpenseRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 반복 수입·지출이 없어요</div>';
  }
  renderAssets();
  renderManualRecent();
@@ -1972,10 +2010,10 @@ function render(){
        const f=accounts.find(a=>a.id===r.from), t=accounts.find(a=>a.id===r.to);
        return `<div class="row" style="cursor:default">
          <div><b>${f?f.name:"?"} → ${t?t.name:"?"}</b>
-           <div style="font-size:12px;color:var(--sub)">매월 ${r.day}일 · ${r.startDate||"오늘부터"}${r.endDate?" ~ "+r.endDate:""} · ${r.memo||"메모 없음"}</div>
+           <div style="font-size:12px;color:var(--sub)">매월 ${r.day}일 · 시작 ${r.startDate||"오늘"}${r.endDate?" ~ "+r.endDate:""} · ${r.memo||"메모 없음"}</div>
          </div>
          <span><b class="amt-move">${won(r.amt)}</b>
-           <button class="del" onclick="delRecurring(${r.id})">삭제</button></span>
+           <button class="btn tiny" onclick="event.stopPropagation();editRecurring(${r.id})">수정</button> <button class="del" onclick="delRecurring(${r.id})">삭제</button></span>
        </div>`;
      }).join("")
    : `<div class="empty">등록된 통장 간 자동이체가 없어요</div>`;
@@ -2025,12 +2063,13 @@ function renderExpenseHistory(){
          <div class="expense-date-head"><span>${date}</span><b>-${won(dayTotal)}</b></div>
          ${byDate[date].map(r=>{
            const ac=accounts.find(a=>a.id===r.acctId);
+           const memoText=(r.memo||"메모 없음").replace(/\s*\(자동\)$/,'');
            return `<div class="row expense-history-row" onclick="openEdit(${r.id})">
-             <div>
-               <b class="direct-cat">${bulkEsc(r.cat||"기타")}</b>
-               <div class="direct-memo">${bulkEsc(r.memo||"메모 없음")}</div>
-               <div class="hint">${ac?bulkEsc(ac.name):"통장·카드 미지정"}${r.source==="recurring"?" · 자동이체":""}</div>
+             <div class="expense-content">
+               <div class="direct-memo ${memoText==="메모 없음"?"empty-memo":""}">${bulkEsc(memoText)}</div>
+               <div class="expense-meta">${r.date||""} · ${ac?bulkEsc(ac.name):"통장·카드 미지정"}${r.source==="recurring"?" · 자동이체":""}</div>
              </div>
+             <div class="expense-category">${bulkEsc(r.cat||"기타")}</div>
              <span class="amt-minus">-${won(r.amt)}</span>
            </div>`;
          }).join("")}
