@@ -985,7 +985,7 @@ function ensureSupabaseLoaded(){
      let i=0;
      const loadNext=()=>{
        if(window.supabase && typeof window.supabase.createClient === 'function'){ done(true); return; }
-       if(i>=urls.length){ done(false); return; }
+       if(i>=urls.length){ __gagyeppeuSupabaseLoading=null; done(false); return; }
        const script=document.createElement('script');
        script.src=urls[i++];
        script.async=true;
@@ -1159,9 +1159,20 @@ async function cloudLogout(){
  cloudStatus("로그아웃됨");
  updateCloudUser();
 }
+async function getCloudUserData(){
+ try{
+  const {data}=await window.__gagyeppeuSupabaseClient.auth.getSession();
+  return {user:data?.session?.user||null};
+ }catch(e){return {user:null};}
+}
 async function updateCloudUser(){
  if(!window.__gagyeppeuSupabaseClient)return;
- const {data}=await window.__gagyeppeuSupabaseClient.auth.getUser();
+ let user=null,err=null;
+ try{const r=await window.__gagyeppeuSupabaseClient.auth.getSession();user=r?.data?.session?.user||null;err=r?.error||null;}catch(e){err=e;}
+ // 네트워크 오류 같은 일시적 실패 때문에 로그인이 풀린 것처럼 보이지 않게, 화면 상태를 그대로 둡니다.
+ if(!user&&err&&getAuthBackup()){cloudStatus("네트워크를 확인하는 중이에요. 잠시 후 자동으로 다시 시도해요.");return;}
+ window.__gagyeppeuLoggedIn=!!user;
+ const data={user};
  const el=document.getElementById("cloudUser");
  const logout=document.getElementById("authLogoutBtn");
  const fields=document.getElementById("loginFields");
@@ -1171,7 +1182,7 @@ async function updateCloudUser(){
 }
 async function cloudCreateHousehold(){
  if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
- const {data:userData}=await window.__gagyeppeuSupabaseClient.auth.getUser();
+ const userData=await getCloudUserData();
  if(!userData?.user){alert("먼저 로그인해주세요.");return;}
  const {data,error}=await window.__gagyeppeuSupabaseClient.rpc("create_household",{p_name:"우리 쀼자산"});
  if(error){alert("가계부 만들기 실패\n\n"+error.message);return;}
@@ -1196,19 +1207,130 @@ async function cloudJoinHousehold(){
  await cloudPull();
 }
 function cloudPayload(){return {records,accounts,recurring,assets,assetRecurring,assetReturns,assetGoal,assetGoals,monthlyBudgets,autoCategoryRules:getAutoCategoryRules(),categories:{income:CATS.income,expense:CATS.expense}};}
+/* ===== 두 기기에서 동시에 쓸 때 서로 덮어쓰지 않도록 합치기 ===== */
+const SYNC_STAMP_KEY="gagyeppeuSyncStamp", SYNC_BASE_KEY="gagyeppeuSyncBase";
+const SYNC_FIELDS=["records","accounts","recurring","assets","assetRecurring","assetReturns","assetGoal","assetGoals","monthlyBudgets"];
+function syncPick(p){const o={};SYNC_FIELDS.forEach(k=>{if(p&&p[k]!==undefined)o[k]=p[k];});return o;}
+function syncMark(stamp,payload){
+  try{
+    localStorage.setItem(SYNC_STAMP_KEY,String(stamp||""));
+    localStorage.setItem(SYNC_BASE_KEY,JSON.stringify(syncPick(payload)));
+  }catch(e){console.warn("SYNC MARK ERROR",e);}
+}
+function syncGetBase(){try{return JSON.parse(localStorage.getItem(SYNC_BASE_KEY)||"null");}catch(e){return null;}}
+function syncEq(a,b){
+  if(a===b)return true;
+  if(typeof a!==typeof b||a===null||b===null||typeof a!=="object")return false;
+  if(Array.isArray(a)!==Array.isArray(b))return false;
+  if(Array.isArray(a)){
+    if(a.length!==b.length)return false;
+    for(let i=0;i<a.length;i++)if(!syncEq(a[i],b[i]))return false;
+    return true;
+  }
+  const ka=Object.keys(a),kb=Object.keys(b);
+  if(ka.length!==kb.length)return false;
+  for(const k of ka){if(!(k in b)||!syncEq(a[k],b[k]))return false;}
+  return true;
+}
+function syncIsIdArray(x){return Array.isArray(x)&&x.every(v=>v&&typeof v==="object"&&!Array.isArray(v)&&v.id!==undefined&&v.id!==null);}
+// base: 마지막으로 동기화했을 때의 데이터 / local: 이 기기 / server: 클라우드
+function syncMerge(base,local,server){
+  if(syncEq(local,server))return local;
+  if(base!==undefined&&syncEq(local,base))return server;   // 내가 안 바꿨으면 서버 것을 그대로
+  if(base!==undefined&&syncEq(server,base))return local;   // 서버가 안 바뀌었으면 내 것을 그대로
+  if(Array.isArray(local)&&Array.isArray(server)){
+    const b=Array.isArray(base)?base:[];
+    if(syncIsIdArray(local)&&syncIsIdArray(server)&&syncIsIdArray(b))return syncMergeById(b,local,server);
+    return local;
+  }
+  if(local&&server&&typeof local==="object"&&typeof server==="object"&&!Array.isArray(local)&&!Array.isArray(server)){
+    const b=(base&&typeof base==="object"&&!Array.isArray(base))?base:{};
+    const out={};
+    new Set([...Object.keys(local),...Object.keys(server)]).forEach(k=>{
+      const inL=k in local,inS=k in server,inB=k in b;
+      if(inL&&inS){
+        if(k==="lastRun"&&typeof local[k]==="string"&&typeof server[k]==="string"){out[k]=local[k]>server[k]?local[k]:server[k];return;}
+        out[k]=syncMerge(inB?b[k]:undefined,local[k],server[k]);
+      }else if(inL){
+        if(!inB||!syncEq(local[k],b[k]))out[k]=local[k];
+      }else{
+        if(!inB||!syncEq(server[k],b[k]))out[k]=server[k];
+      }
+    });
+    return out;
+  }
+  return local;
+}
+function syncMergeById(base,local,server){
+  const key=v=>String(v.id);
+  const B=new Map(base.map(v=>[key(v),v])),L=new Map(local.map(v=>[key(v),v])),S=new Map(server.map(v=>[key(v),v]));
+  const out=[],seen=new Set();
+  const take=k=>{
+    if(seen.has(k))return; seen.add(k);
+    const b=B.get(k),l=L.get(k),s=S.get(k);
+    if(l&&s)out.push(syncMerge(b,l,s));
+    else if(l){if(!b||!syncEq(l,b))out.push(l);}   // 다른 기기에서 삭제됨: 내가 고친 게 아니면 삭제 유지
+    else if(s){if(!b||!syncEq(s,b))out.push(s);}   // 이 기기에서 삭제됨: 서버가 고친 게 아니면 삭제 유지
+  };
+  server.forEach(v=>take(key(v)));
+  local.forEach(v=>take(key(v)));
+  return out;
+}
+// 두 기기가 같은 반복 항목을 각각 실행해 생긴 중복 자동 내역만 하나로 정리합니다.
+function syncDedupeAuto(recs,base){
+  const isAuto=r=>r&&(r.source==="recurring"||r.source==="assetRecurring");
+  const keyOf=r=>[r.source,r.date,r.type,r.amt,r.memo,r.acctId,r.from,r.to,r.cat].join("|");
+  const baseIds=new Set((base||[]).map(v=>String(v.id)));
+  const seen=new Set();
+  recs.forEach(r=>{if(isAuto(r)&&baseIds.has(String(r.id)))seen.add(keyOf(r));});
+  return recs.filter(r=>{
+    if(!isAuto(r)||baseIds.has(String(r.id)))return true;
+    const k=keyOf(r);
+    if(seen.has(k))return false;
+    seen.add(k);return true;
+  });
+}
+function syncApplyMerged(m){
+  records=m.records||[];accounts=m.accounts||[];recurring=m.recurring||[];assets=m.assets||[];assetRecurring=m.assetRecurring||[];assetReturns=m.assetReturns||[];assetGoal=m.assetGoal||{target:0};assetGoals=m.assetGoals||{"2027":0,"2028":0,"2029":0};monthlyBudgets=m.monthlyBudgets||{};
+  normalizeData(); normalizeRecords(); localSaveOnly();
+  buildChips(); buildAcctSelect(); renderAssets(); render();
+  try{renderAnalysis();}catch(e){console.error("ANALYSIS MERGE ERROR:",e);}
+}
 async function cloudPush(){
  if(cloudSyncing||cloudLoading||!gagyeppeuHouseholdId)return;
  if(!window.__gagyeppeuSupabaseClient && !setCloudClient())return;
  cloudSyncing=true;
  try{
-   const {data:userData}=await window.__gagyeppeuSupabaseClient.auth.getUser(); if(!userData?.user) return;
+   const userData=await getCloudUserData(); if(!userData?.user) return;
    if(!HOUSEHOLD_UUID_RE.test(String(gagyeppeuHouseholdId))) throw new Error("가계부 연결 ID가 올바르지 않아요. 다시 로그인해주세요.");
    const {data:member,error:memberError}=await window.__gagyeppeuSupabaseClient.from("household_members").select("household_id").eq("user_id",userData.user.id).eq("household_id",gagyeppeuHouseholdId).maybeSingle();
    if(memberError) throw memberError;
    if(!member) throw new Error("현재 로그인한 계정이 이 가계부에 연결되어 있지 않아요.");
-   const {error}=await window.__gagyeppeuSupabaseClient.from("household_data").upsert({household_id:gagyeppeuHouseholdId,data:cloudPayload(),updated_at:new Date().toISOString()},{onConflict:"household_id"});
+   const client=window.__gagyeppeuSupabaseClient;
+   let payload=cloudPayload(), mergedFromOther=false;
+   // 다른 기기가 그사이 저장했다면(서버 저장 시각이 내가 마지막으로 동기화한 시각과 다르면) 덮어쓰지 않고 합쳐서 저장합니다.
+   const {data:head,error:headError}=await client.from("household_data").select("updated_at").eq("household_id",gagyeppeuHouseholdId).maybeSingle();
+   if(headError) throw headError;
+   if(head?.updated_at){
+     const known=localStorage.getItem(SYNC_STAMP_KEY)||"";
+     if(!known||Date.parse(head.updated_at)!==Date.parse(known)){
+       const {data:full,error:fullError}=await client.from("household_data").select("data").eq("household_id",gagyeppeuHouseholdId).maybeSingle();
+       if(fullError) throw fullError;
+       if(full?.data){
+         const base=syncGetBase();
+         const merged=syncMerge(base||undefined,syncPick(payload),syncPick(full.data));
+         merged.records=syncDedupeAuto(merged.records||[],base&&base.records);
+         syncApplyMerged(merged);
+         payload=cloudPayload();
+         mergedFromOther=true;
+       }
+     }
+   }
+   const stamp=new Date().toISOString();
+   const {error}=await client.from("household_data").upsert({household_id:gagyeppeuHouseholdId,data:payload,updated_at:stamp},{onConflict:"household_id"});
    if(error) throw error;
-   cloudStatus(" 저장됨 · "+new Date().toLocaleTimeString());
+   syncMark(stamp,payload);
+   cloudStatus((mergedFromOther?" 다른 기기 변경사항과 합쳐서 저장됨 · ":" 저장됨 · ")+new Date().toLocaleTimeString());
  }catch(e){
    console.error("CLOUD PUSH ERROR:",e);
    cloudStatus(" 저장 실패 · "+(e?.message||"설정/RLS를 확인해주세요"));
@@ -1222,7 +1344,7 @@ async function cloudPull(){
    gagyeppeuHouseholdId=""; localStorage.removeItem("gagyeppeuHouseholdId");
  }
  if(!gagyeppeuHouseholdId && householdShareCode){
-   const {data:userData}=await window.__gagyeppeuSupabaseClient.auth.getUser();
+   const userData=await getCloudUserData();
    if(!userData?.user)return;
    const {data,error}=await window.__gagyeppeuSupabaseClient.rpc("join_household",{p_share_code:householdShareCode});
    if(error){alert("가계부 연결 정보를 확인하지 못했어요.\n\n"+error.message);return;}
@@ -1235,7 +1357,7 @@ async function cloudPull(){
    localStorage.setItem("householdShareCode",householdShareCode);
  }
  if(!gagyeppeuHouseholdId || !HOUSEHOLD_UUID_RE.test(String(gagyeppeuHouseholdId)))return;
- const {data,error}=await window.__gagyeppeuSupabaseClient.from("household_data").select("data").eq("household_id",gagyeppeuHouseholdId).maybeSingle();
+ const {data,error}=await window.__gagyeppeuSupabaseClient.from("household_data").select("data,updated_at").eq("household_id",gagyeppeuHouseholdId).maybeSingle();
  if(error){alert("클라우드 불러오기 실패: "+error.message);return;}
  if(!data?.data)return;
  const d=data.data; cloudLoading=true;
@@ -1248,6 +1370,7 @@ async function cloudPull(){
    saveCustomCategories();
  }
  normalizeData(); normalizeRecords(); localSaveOnly();
+ syncMark(data.updated_at,d);
  buildChips(); buildAcctSelect(); renderAssets(); render();
  try{renderAnalysis();}catch(e){console.error("ANALYSIS PULL ERROR:",e);}
  cloudLoading=false; cloudStatus("클라우드 데이터를 불러왔어요.");
@@ -2554,6 +2677,7 @@ async function refreshApp(){
 
 
 async function restoreAuthSession(){
+ window.__gagyeppeuAuthReason="";
  try{
   if(!window.__gagyeppeuSupabaseClient)return null;
   const client=window.__gagyeppeuSupabaseClient;
@@ -2567,7 +2691,12 @@ async function restoreAuthSession(){
 
   // 2) 자체 백업 토큰으로 복원
   const saved=getAuthBackup();
-  if(!saved)return null;
+  if(!saved){
+    window.__gagyeppeuAuthReason=window.__gagyeppeuSignedOut
+      ? "세션 갱신에 실패해서 자동 로그아웃됐어요"
+      : "저장된 로그인 정보가 없어요 (브라우저 저장소가 비워졌을 수 있어요)";
+    return null;
+  }
   const restored=await client.auth.setSession({
     access_token:saved.access_token,
     refresh_token:saved.refresh_token
@@ -2579,6 +2708,7 @@ async function restoreAuthSession(){
   }
  }catch(e){
   console.error("AUTH RESTORE ERROR:",e);
+  window.__gagyeppeuAuthReason="복원 오류: "+(e?.message||e);
   // 만료/폐기된 토큰일 때만 백업을 정리합니다.
   // 일시적인 네트워크 오류에서는 로그인 정보를 지우지 않습니다.
   const msg=String(e?.message||e||"").toLowerCase();
@@ -2589,6 +2719,67 @@ async function restoreAuthSession(){
  return null;
 }
 
+let __authListenerSet=false;
+function setupAuthListener(){
+  if(__authListenerSet||!window.__gagyeppeuSupabaseClient)return;
+  __authListenerSet=true;
+  window.__gagyeppeuSupabaseClient.auth.onAuthStateChange((event,session)=>{
+    // 나중에 왜 풀렸는지 확인할 수 있게 마지막 인증 이벤트를 남깁니다.
+    try{localStorage.setItem("gagyeppeuAuthLastEvent",JSON.stringify({event,hasSession:!!session,at:new Date().toISOString()}));}catch(e){}
+    if(session){
+      saveAuthBackup(session);
+      cloudStatus(" 연결됨 · 로그인 상태");
+    }else if(event === "SIGNED_OUT"){
+      window.__gagyeppeuSignedOut=true;
+      clearAuthBackup();
+      cloudStatus("로그아웃됨");
+    }
+    updateCloudUser().catch(()=>{});
+  });
+}
+
+async function initAuth(){
+  // CDN 스크립트가 늦거나 한 번 실패해도 최대 3번까지 다시 불러옵니다.
+  let ok=false;
+  for(let i=0;i<3&&!ok;i++){
+    ok=await ensureCloudClient();
+    if(!ok)await new Promise(r=>setTimeout(r,1500));
+  }
+  if(!ok){
+    cloudStatus("클라우드 라이브러리를 불러오지 못했어요. 인터넷 연결 후 새로고침해 주세요.");
+    return;
+  }
+  setupAuthListener();
+  try{
+    const session=await restoreAuthSession();
+    if(session){
+      cloudStatus(" 연결됨 · 로그인 상태");
+      await updateCloudUser().catch(()=>{});
+      await cloudPull();
+    }else{
+      cloudStatus("로그인하지 않았어요"+(window.__gagyeppeuAuthReason?" · "+window.__gagyeppeuAuthReason:""));
+      await updateCloudUser().catch(()=>{});
+    }
+  }catch(e){
+    console.error("AUTH INIT ERROR:",e);
+    updateCloudUser().catch(()=>{});
+  }
+}
+
+// 오프라인이었다가 돌아오거나 앱을 다시 열었을 때, 로그아웃 상태로 보이면 복원을 다시 시도합니다.
+function retryAuthRestore(){
+  if(document.visibilityState==="hidden"||window.__gagyeppeuLoggedIn||!window.__gagyeppeuSupabaseClient)return;
+  restoreAuthSession().then(async s=>{
+    if(s){
+      cloudStatus(" 연결됨 · 로그인 상태");
+      await updateCloudUser().catch(()=>{});
+      await cloudPull();
+    }
+  }).catch(()=>{});
+}
+window.addEventListener("online",retryAuthRestore);
+document.addEventListener("visibilitychange",retryAuthRestore);
+
 (function init(){
  try {
    updateLastRefreshTime();
@@ -2597,18 +2788,6 @@ async function restoreAuthSession(){
    const code=document.getElementById("createdShareCode");
    if(code && householdShareCode){code.style.display="block";code.innerHTML=`가계부 키<br><strong style="font-size:1.35em;letter-spacing:.08em">${bulkEsc(householdShareCode)}</strong><br><span class="hint">이 키를 배우자에게 보내주세요.</span>`;}
    setCloudClient();
-   if(window.__gagyeppeuSupabaseClient){
-     window.__gagyeppeuSupabaseClient.auth.onAuthStateChange((event,session)=>{
-       if(session){
-         saveAuthBackup(session);
-         cloudStatus(" 연결됨 · 로그인 상태");
-       }else if(event === "SIGNED_OUT"){
-         clearAuthBackup();
-         cloudStatus("로그아웃됨");
-       }
-       updateCloudUser().catch(()=>{});
-     });
-   }
 
    const inDate=document.getElementById("inDate"); if(inDate) inDate.value=today();
    const rm=document.getElementById("returnMonth"); if(rm) rm.value=nowYM();
@@ -2631,22 +2810,8 @@ async function restoreAuthSession(){
      render();
    }catch(e){ console.error("RECURRING INIT ERROR:",e); }
 
-   // 클라우드 세션 확인도 기본 화면 표시와 분리합니다.
-   if(window.__gagyeppeuSupabaseClient){
-     restoreAuthSession().then(async (session)=>{
-       if(session){
-         cloudStatus(" 연결됨 · 로그인 상태");
-         await updateCloudUser().catch(()=>{});
-         await cloudPull();
-       }else{
-         cloudStatus("로그인하지 않았어요");
-         await updateCloudUser().catch(()=>{});
-       }
-     }).catch(e=>{
-       console.error("AUTH INIT ERROR:",e);
-       updateCloudUser().catch(()=>{});
-     });
-   }
+   // 클라우드 로그인 복원: 라이브러리 로딩이 늦거나 실패해도 다시 시도합니다.
+   initAuth();
  } catch(e) {
    console.error("APP INIT ERROR:", e);
    const msg=document.getElementById("title");
