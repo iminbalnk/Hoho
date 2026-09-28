@@ -540,6 +540,24 @@ body,input,select,textarea,button,h1,h2,h3,h4,h5,h6,.btn,.navbar button,.chip,la
 }
 
 .direct-memo{color:#fff;font-size:12px;margin-top:3px}.direct-cat{display:block}.direct-expense-list{}
+
+/* 분석 그래프 */
+.donut-wrap{display:flex;flex-direction:column;align-items:center;gap:18px;padding:8px 0 4px;}
+.donut-chart{width:220px;height:220px;border-radius:50%;position:relative;background:conic-gradient(#e9e1d6 0 100%);}
+.donut-chart::after{content:"";position:absolute;inset:54px;border-radius:50%;background:var(--card,#2b1e19);}
+.donut-center{position:absolute;z-index:2;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;}
+.donut-center span{font-size:13px;color:var(--sub);}
+.donut-center b{font-size:16px;}
+.donut-legend{width:100%;display:flex;flex-direction:column;gap:8px;}
+.donut-legend .legend-row{display:flex;align-items:center;justify-content:space-between;font-size:13px;}
+.donut-legend .legend-name{display:flex;align-items:center;gap:7px;}
+.donut-legend .dot{width:10px;height:10px;border-radius:50%;display:inline-block;}
+.monthly-bar-chart{display:flex;flex-direction:column;gap:12px;}
+.monthly-bar-item{display:grid;grid-template-columns:52px 1fr 78px;align-items:center;gap:8px;font-size:12px;}
+.monthly-bar-bg{height:18px;border-radius:10px;background:rgba(255,255,255,.08);overflow:hidden;}
+.monthly-bar-fill{height:100%;border-radius:10px;background:var(--accent,#b78b65);min-width:0;}
+.monthly-bar-month{color:var(--sub);}
+.monthly-bar-amount{text-align:right;font-weight:700;}
 </style>
 <style id="pretendard-override">
 html, body, input, select, textarea, button, option {
@@ -712,13 +730,30 @@ html, body, input, select, textarea, button, option {
    <button class="btn" onclick="addAsset()">자산 추가</button>
   </div>
  </div>
+ <div class="card">
+  <div class="section-title"><div><div class="section-kicker">GOAL</div><h3>목표자산</h3></div></div>
+  <div style="display:flex;gap:8px;align-items:center;margin-top:12px">
+   <input id="assetGoalInput" type="number" min="0" step="100000" placeholder="목표 금액" style="flex:1">
+   <button class="btn" onclick="saveAssetGoal()">저장</button>
+  </div>
+  <div id="assetGoalOverview" style="margin-top:14px"></div>
+ </div>
+ <div class="card">
+  <div class="section-title"><div><div class="section-kicker">OVERVIEW</div><h3>전체 자산 분산</h3></div></div>
+  <div id="assetOverview" class="analysis-grid"></div>
+ </div>
+
+
 </div>
 
 <!-- ===== 탭3: 분석 ===== -->
 <div id="tab-report" class="hide">
  <div class="card">
   <div class="section-title"><div><div class="section-kicker">SPENDING</div><h3>전체 쓰임새 분산</h3></div></div>
-  <div id="categoryOverview" class="analysis-grid"></div>
+  <div class="donut-wrap">
+   <div class="donut-chart" id="categoryDonut" aria-label="전체 쓰임새 분산 도넛 그래프"><div class="donut-center"><span>전체 지출</span><b id="categoryDonutTotal">0원</b></div></div>
+   <div id="categoryDonutLegend" class="donut-legend"></div>
+  </div>
  </div>
  <div class="card">
   <div class="section-title"><div><div class="section-kicker">CATEGORY</div><h3>카테고리 관리</h3></div></div>
@@ -733,7 +768,6 @@ html, body, input, select, textarea, button, option {
   </div>
   <div id="analysisBudgetOverview" style="margin-top:14px"></div>
  </div>
->
  <div class="card">
   <div class="section-title"><div><div class="section-kicker">MONTHLY</div><h3>월별 변화</h3></div></div>
   <div class="month-nav"><button class="btn sub" onclick="changeAnalysisMonth(-1)">‹</button><b id="analysisMonth"></b><button class="btn sub" onclick="changeAnalysisMonth(1)">›</button></div>
@@ -741,22 +775,7 @@ html, body, input, select, textarea, button, option {
  </div>
  <div class="card">
   <div class="section-title"><div><div class="section-kicker">CATEGORY</div><h3>월별 지출</h3></div></div>
-  <div id="categoryMonthly"></div>
- </div>
- <div class="card">
-  <div class="section-title"><div><div class="section-kicker">GOALS</div><h3>연도별 목표자산</h3></div></div>
-  <p class="hint">각 연도 1월 1일 기준으로 목표 총자산을 따로 설정할 수 있어요.</p>
-  <div class="goal-grid">
-   <div><label>2027.01.01 목표</label><input id="assetGoal2027" type="number" min="0" step="100000" placeholder="예: 100000000"></div>
-   <div><label>2028.01.01 목표</label><input id="assetGoal2028" type="number" min="0" step="100000" placeholder="예: 180000000"></div>
-   <div><label>2029.01.01 목표</label><input id="assetGoal2029" type="number" min="0" step="100000" placeholder="예: 250000000"></div>
-  </div>
-  <button class="btn" style="margin-top:10px" onclick="saveAssetGoals()">목표 저장</button>
-  <div id="assetGoalOverview" style="margin-top:14px"></div>
- </div
- <div class="card">
-  <div class="section-title"><div><div class="section-kicker">OVERVIEW</div><h3>전체 자산 분산</h3></div></div>
-  <div id="assetOverview" class="analysis-grid"></div>
+  <div id="categoryMonthly" class="monthly-bar-chart"></div>
  </div>
 </div>
 <div id="tab-settings" class="hide">
@@ -1973,25 +1992,6 @@ function render(){
  const _sumOut=document.getElementById("sumOut"); if(_sumOut) _sumOut.textContent=won(outSum);
  const _sumBal=document.getElementById("sumBal"); if(_sumBal) _sumBal.textContent=won(total);
 
- // 최근 내역 (이체 제외, 클릭 시 수정)
- const rec = records.filter(r=>r.type!=="move").slice(-10).reverse();
- const recentBox=document.getElementById("recentList");
- if(recentBox){
-   recentBox.innerHTML = rec.length
-     ? rec.map(r=>{
-         const ac = accounts.find(a=>a.id===r.acctId);
-         const cls  = r.type==="income" ? "amt-plus" : "amt-minus";
-         const sign = r.type==="income" ? "+" : "-";
-         return `<div class="row" onclick="openEdit(${r.id})">
-           <div><b>${r.cat}</b>
-             <div style="font-size:12px;color:var(--sub)">${r.date} · ${ac?ac.name:"삭제됨"}${r.memo?" · "+r.memo:""}</div>
-           </div>
-           <span class="${cls}">${sign}${won(r.amt)}</span>
-         </div>`;
-       }).join("")
-     : `<div class="empty">아직 내역이 없어요</div>`;
- }
-
  // 통장 목록
  const sortEl=document.getElementById("accountSort");
  if(sortEl) sortEl.value=accountSortMode;
@@ -2030,6 +2030,7 @@ function render(){
   ie.innerHTML=arr.length?arr.map(r=>{const a=accounts.find(x=>x.id===r.acctId);return `<div class="row"><div><b>${r.type==="income"?"수입":"지출"} · ${bulkEsc(r.cat||"기타")}</b><div class="hint">${a?bulkEsc(a.name):"?"} · 매월 ${r.day}일${r.memo?" · "+bulkEsc(r.memo):""}</div></div><span><b class="${r.type==="income"?"amt-plus":"amt-minus"}">${r.type==="income"?"+":"-"}${won(r.amt)}</b> <button class="del" onclick="event.stopPropagation();delIncomeExpenseRecurring(${r.id})">삭제</button></span></div>`}).join(""):'<div class="empty">등록된 반복 수입·지출이 없어요</div>';
  }
  renderAssets();
+ renderExpenseHistory();
  // 반복이체 목록
  const recurList=document.getElementById("recurList"); if(recurList) {
    const transferRecurring = recurring.filter(r=>r.kind==="transfer");
@@ -2068,13 +2069,13 @@ function renderExpenseHistory(){
  if(!box)return;
  // 직접입력으로 저장한 지출만 이 탭에서 보여줍니다.
  // 붙여넣기(bulk), 자동이체(recurring), 통장 간 이체/자산이동은 제외합니다.
- const list=records.filter(r=>
-   r.type==="expense" &&
-   r.source!=="bulk" &&
-   r.source!=="recurring" &&
-   !r.assetTransfer &&
-   r.type!=="move"
- ).slice().reverse();
+ const list=records.filter(r=>{
+   if(r.type!=="expense" || r.assetTransfer || r.type==="move") return false;
+   // 직접입력으로 저장된 지출만 표시합니다.
+   // 예전 데이터처럼 source가 없는 일반 지출도 함께 보이도록 호환합니다.
+   if(r.source==="bulk" || r.source==="recurring") return false;
+   return r.source==="manual" || !r.source;
+ }).slice().reverse();
  box.innerHTML=list.length
    ? list.map(r=>{
        const ac=accounts.find(a=>a.id===r.acctId);
@@ -2106,6 +2107,8 @@ function showTab(name){
      // 통장 탭을 열 때마다 최신 계좌 데이터를 다시 그려요.
      buildAcctSelect();
      renderAssets();
+     renderAssetGoal();
+     renderAssetOverview();
      render();
    }else if(name==="report"){
      renderAnalysis();
@@ -2251,67 +2254,97 @@ function getCurrentTotalAssets(){
  const invested=assets.reduce((sum,a)=>sum+Number(a.value||0),0);
  return cash+invested;
 }
-function saveAssetGoals(){
- const vals={};
- [2027,2028,2029].forEach(y=>vals[String(y)]=Number(document.getElementById("assetGoal"+y)?.value||0));
- assetGoals=vals;
- save(); renderAnalysis();
- alert("연도별 목표자산을 저장했어요!");
+function saveAssetGoal(){
+ const target=Number(document.getElementById("assetGoalInput")?.value||0);
+ assetGoal={target};
+ // 기존 연도별 목표 데이터는 호환을 위해 유지하되 화면에서는 사용하지 않아요.
+ assetGoals={2027:0,2028:0,2029:0};
+ save();
+ renderAssetGoal();
+ alert("목표자산을 저장했어요!");
 }
 function renderAssetGoal(){
  const box=document.getElementById("assetGoalOverview"); if(!box)return;
+ const input=document.getElementById("assetGoalInput");
+ const target=Number(assetGoal?.target||0);
+ if(input) input.value=target||"";
  const current=getCurrentTotalAssets();
- [2027,2028,2029].forEach(y=>{const el=document.getElementById("assetGoal"+y);if(el)el.value=Number(assetGoals[String(y)]||0)||"";});
- const rows=[2027,2028,2029].map(y=>{
-   const target=Number(assetGoals[String(y)]||0);
-   const progress=target?Math.min(100,Math.max(0,current/target*100)):0;
-   return `<div class="analysis-item" style="margin-top:10px"><div class="analysis-line"><b>${y}.01.01</b><span>${target?`${won(target)} · ${progress.toFixed(1)}%`:`목표 미설정`}</span></div>${target?`<div class="bar"><i style="width:${progress}%"></i></div>`:""}</div>`;
- }).join("");
- box.innerHTML=rows;
+ const progress=target?Math.min(100,Math.max(0,current/target*100)):0;
+ box.innerHTML=target
+   ? `<div class="analysis-item"><div class="analysis-line"><b>현재 자산</b><span>${won(current)} / ${won(target)}</span></div><div class="bar"><i style="width:${progress}%"></i></div><div class="hint" style="margin-top:6px">목표의 ${progress.toFixed(1)}%</div></div>`
+   : `<div class="empty">목표 금액을 입력하고 저장해주세요.</div>`;
+}
+
+function renderAssetOverview(){
+ const assetBox=document.getElementById("assetOverview");
+ if(!assetBox)return;
+ const cash=accounts.reduce((sum,a)=>sum+Number(a.bal||0),0);
+ const savings=assets.filter(a=>a.type==="savings").reduce((sum,a)=>sum+Number(a.value||0),0);
+ const pension=assets.filter(a=>a.type==="pension").reduce((sum,a)=>sum+Number(a.value||0),0);
+ const stock=assets.filter(a=>a.type==="stock").reduce((sum,a)=>sum+Number(a.value||0),0);
+ const total=cash+savings+pension+stock;
+ const rows=[["통장·카드",cash],["적금통장",savings],["연금저축",pension],["주식",stock]];
+ assetBox.innerHTML=rows.map(([name,val])=>{
+   const pct=total?Math.round(val/total*100):0;
+   return `<div class="analysis-item"><div class="analysis-line"><b>${name}</b><span>${won(val)} · ${pct}%</span></div><div class="bar"><i style="width:${pct}%"></i></div></div>`;
+ }).join("")+`<div class="analysis-total">전체 자산 ${won(total)}</div>`;
 }
 
 function renderAnalysis(){
- renderAssetGoal();
  renderCategoryManager();
  const ym=analysisYM(),monthRecords=records.filter(r=>String(r.date||"").slice(0,7)===ym);
  const title=document.getElementById("analysisMonth");if(title)title.textContent=monthLabel(ym);
  const btitle=document.getElementById("budgetMonth");if(btitle)btitle.textContent=monthLabel(ym);
  const bi=document.getElementById("analysisBudgetInput");if(bi)bi.value=getBudget(ym)||"";
- const bo=document.getElementById("analysisBudgetOverview"); if(bo){ const bd=getBudget(ym), spent=monthRecords.filter(r=>r.type==="expense").reduce((a,r)=>a+Number(r.amt||0),0); const pct=bd?Math.round(spent/bd*100):0; bo.innerHTML=bd?`<div class="analysis-summary"><div><span>지출</span><b>${won(spent)}</b></div><div><span>예산</span><b>${won(bd)}</b></div><div><span>남은 예산</span><b>${won(Math.max(bd-spent,0))}</b></div></div><div class="analysis-item" style="margin-top:10px"><div class="analysis-line"><span>사용률</span><b>${pct}%</b></div><div class="bar"><i style="width:${Math.min(pct,100)}%"></i></div></div>`:`<div class="empty">${monthLabel(ym)} 예산이 아직 설정되지 않았어요.</div>`; }
- const assetBox=document.getElementById("assetOverview");
- if(assetBox){
-   const cash=accounts.reduce((sum,a)=>sum+Number(a.bal||0),0);
-   const savings=assets.filter(a=>a.type==="savings").reduce((sum,a)=>sum+Number(a.value||0),0);
-   const pension=assets.filter(a=>a.type==="pension").reduce((sum,a)=>sum+Number(a.value||0),0);
-   const stock=assets.filter(a=>a.type==="stock").reduce((sum,a)=>sum+Number(a.value||0),0);
-   const total=cash+savings+pension+stock;
-   const rows=[["통장·카드",cash],["적금통장",savings],["연금저축",pension],["주식",stock]];
-   assetBox.innerHTML=rows.map(([name,val])=>{
-     const pct=total?Math.round(val/total*100):0;
-     return `<div class="analysis-item"><div class="analysis-line"><b>${name}</b><span>${won(val)} · ${pct}%</span></div><div class="bar"><i style="width:${pct}%"></i></div></div>`;
-   }).join("")+`<div class="analysis-total">전체 자산 ${won(total)}</div>`;
+ const bo=document.getElementById("analysisBudgetOverview");
+ if(bo){
+   const bd=getBudget(ym),spent=monthRecords.filter(r=>r.type==="expense").reduce((a,r)=>a+Number(r.amt||0),0),pct=bd?Math.round(spent/bd*100):0;
+   bo.innerHTML=bd?`<div class="analysis-summary"><div><span>지출</span><b>${won(spent)}</b></div><div><span>예산</span><b>${won(bd)}</b></div><div><span>남은 예산</span><b>${won(Math.max(bd-spent,0))}</b></div></div><div class="analysis-item" style="margin-top:10px"><div class="analysis-line"><span>사용률</span><b>${pct}%</b></div><div class="bar"><i style="width:${Math.min(pct,100)}%"></i></div></div>`:`<div class="empty">${monthLabel(ym)} 예산이 아직 설정되지 않았어요.</div>`;
  }
- const catBox=document.getElementById("categoryOverview");
- if(catBox){
-   const sums={};records.filter(r=>r.type==="expense").forEach(r=>sums[r.cat||"기타"]=(sums[r.cat||"기타"]||0)+Number(r.amt||0));
-   const total=Object.values(sums).reduce((a,b)=>a+b,0);
+
+ // 전체 쓰임새: 전체 지출을 카테고리별 도넛으로 표시
+ const donut=document.getElementById("categoryDonut");
+ const legend=document.getElementById("categoryDonutLegend");
+ const totalEl=document.getElementById("categoryDonutTotal");
+ if(donut&&legend){
+   const sums={};
+   records.filter(r=>r.type==="expense").forEach(r=>sums[r.cat||"기타"]=(sums[r.cat||"기타"]||0)+Number(r.amt||0));
    const rows=Object.entries(sums).sort((a,b)=>b[1]-a[1]);
-   catBox.innerHTML=rows.length?rows.map(([name,val])=>{
-     const pct=total?Math.round(val/total*100):0;
-     return `<div class="analysis-item"><div class="analysis-line"><b>${bulkEsc(name)}</b><span>${won(val)} · ${pct}%</span></div><div class="bar"><i style="width:${pct}%"></i></div></div>`;
-   }).join(""):'<div class="empty">아직 지출 내역이 없어요</div>';
+   const total=rows.reduce((a,[,v])=>a+v,0);
+   if(totalEl)totalEl.textContent=won(total);
+   if(!rows.length){
+     donut.style.background="conic-gradient(#e9e1d6 0 100%)";
+     legend.innerHTML='<div class="empty">아직 지출 내역이 없어요</div>';
+   }else{
+     const colors=["#b78b65","#8fa58d","#c98f8f","#8b9bb4","#c7a86b","#9b82a8","#78909c","#b06f5d"];
+     let cursor=0;
+     const parts=rows.map(([name,val],i)=>{
+       const pct=val/total*100, start=cursor, end=cursor+pct; cursor=end;
+       return `${colors[i%colors.length]} ${start}% ${end}%`;
+     });
+     donut.style.background=`conic-gradient(${parts.join(",")})`;
+     legend.innerHTML=rows.map(([name,val],i)=>{
+       const pct=Math.round(val/total*100);
+       return `<div class="legend-row"><span class="legend-name"><i class="dot" style="background:${colors[i%colors.length]}"></i>${bulkEsc(name)}</span><b>${won(val)} · ${pct}%</b></div>`;
+     }).join("");
+   }
  }
+
  const mon=document.getElementById("monthlyOverview");
  if(mon){
    const income=monthRecords.filter(r=>r.type==="income").reduce((a,r)=>a+Number(r.amt||0),0);
    const expense=monthRecords.filter(r=>r.type==="expense").reduce((a,r)=>a+Number(r.amt||0),0);
    mon.innerHTML=`<div class="analysis-summary"><div><span>수입</span><b class="amt-plus">+${won(income)}</b></div><div><span>지출</span><b class="amt-minus">-${won(expense)}</b></div><div><span>월간 잔액</span><b>${won(income-expense)}</b></div></div>`;
  }
+
+ // 월별 지출: 최근 6개월 총지출 막대바
  const cm=document.getElementById("categoryMonthly");
  if(cm){
-   const sums={};monthRecords.filter(r=>r.type==="expense").forEach(r=>sums[r.cat||"기타"]=(sums[r.cat||"기타"]||0)+Number(r.amt||0));
-   const rows=Object.entries(sums).sort((a,b)=>b[1]-a[1]);
-   cm.innerHTML=rows.length?rows.map(([n,v])=>`<div class="row"><span>${bulkEsc(n)}</span><b>${won(v)}</b></div>`).join(""):`<div class="empty">${monthLabel(ym)} 지출이 없어요</div>`;
+   const months=[];const base=new Date();
+   for(let i=5;i>=0;i--){const d=new Date(base.getFullYear(),base.getMonth()-i,1);months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`);}
+   const vals=months.map(m=>records.filter(r=>r.type==="expense"&&ym(r.date)===m).reduce((a,r)=>a+Number(r.amt||0),0));
+   const max=Math.max(...vals,1);
+   cm.innerHTML=months.map((m,i)=>`<div class="monthly-bar-item"><span class="monthly-bar-month">${m.slice(5)}월</span><div class="monthly-bar-bg"><div class="monthly-bar-fill" style="width:${Math.round(vals[i]/max*100)}%"></div></div><b class="monthly-bar-amount">${won(vals[i])}</b></div>`).join("");
  }
 }
 
@@ -2350,6 +2383,8 @@ async function refreshApp(){
    buildChips();
    buildAcctSelect();
    renderAssets();
+   renderAssetGoal();
+   renderAssetOverview();
    render();
 
    // 분석 화면은 메인 화면과 분리해서 오류가 나도 기본 화면을 막지 않게 합니다.
