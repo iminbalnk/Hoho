@@ -862,6 +862,16 @@ let sb = null;
 let householdId = localStorage.getItem("householdId") || "";
 let householdShareCode = localStorage.getItem("householdShareCode") || "";
 
+// 이전 버전은 공유키(예: 88F8B116)를 householdId에 잘못 저장했습니다.
+// UUID가 아니면 공유키로 간주하고 householdId를 비워서 잘못된 UUID 조회를 막습니다.
+const HOUSEHOLD_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+if(householdId && !HOUSEHOLD_UUID_RE.test(householdId)){
+  if(!householdShareCode) householdShareCode = householdId;
+  householdId = "";
+  localStorage.setItem("householdShareCode", householdShareCode);
+  localStorage.removeItem("householdId");
+}
+
 function localSaveOnly(){
  localStorage.setItem("records", JSON.stringify(records));
  localStorage.setItem("accounts", JSON.stringify(accounts));
@@ -959,7 +969,7 @@ async function cloudLogin(){
   document.getElementById("sbPassword").value="";
   cloudStatus("로그인됨");
   await updateCloudUser();
-  if(householdId) await cloudPull();
+  if(householdId && HOUSEHOLD_UUID_RE.test(householdId)) await cloudPull();
  }catch(e){
   console.error("LOGIN ERROR:",e);
   alert("로그인 실패\\n\\n"+(e?.message||String(e)));
@@ -998,8 +1008,9 @@ async function cloudCreateHousehold(){
 
  const {data,error}=await sb.rpc("create_household",{p_name:"우리 쀼자산"});
  if(error){alert("가계부 만들기 실패\n\n"+error.message);return;}
- const code=typeof data==="string"?data:(data?.share_code||data?.code||"");
- const hid=typeof data==="object"?(data?.household_id||data?.id||""):"";
+ const result = Array.isArray(data) ? data[0] : data;
+ const code=typeof result==="string"?result:(result?.share_code||result?.code||"");
+ const hid=typeof result==="object"?(result?.household_id||result?.id||""):"";
  if(!code || !hid){alert("가계부 정보를 받지 못했어요. Supabase SQL 설정을 확인해주세요.");return;}
  householdId=hid;
  householdShareCode=code;
@@ -1037,8 +1048,9 @@ async function cloudJoinHousehold(){
  if(error){alert("가계부 참여 실패\n\n"+error.message);return;}
 
  // id는 공유키(예: 88F8B116), hid는 실제 household UUID입니다.
- const code=data?.share_code || id;
- const hid=data?.household_id || data?.id || "";
+ const result = Array.isArray(data) ? data[0] : data;
+ const code=result?.share_code || id;
+ const hid=result?.household_id || result?.id || "";
  if(!hid){
    alert("가계부 연결 정보를 받지 못했어요. Supabase SQL 설정을 확인해주세요.");
    return;
@@ -2215,7 +2227,7 @@ function renderAnalysis(){
        if(data.session){
          cloudStatus(" 연결됨 · 로그인 상태");
          updateCloudUser();
-         if(householdId) await cloudPull();
+         if(householdId && HOUSEHOLD_UUID_RE.test(householdId)) await cloudPull();
        }
      }).catch(e=>console.error("AUTH INIT ERROR:",e));
    }
@@ -2227,9 +2239,18 @@ function renderAnalysis(){
 })();
 </script>
 <script>
+// 오래된 Service Worker가 예전 index.html을 계속 보여주는 문제를 방지합니다.
+// 가계쀼의 로그인/클라우드 동기화에는 Service Worker가 필요하지 않습니다.
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js?v=3').catch(() => {});
+  window.addEventListener('load', async () => {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+      if (window.caches) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+    } catch(e) { console.warn('SERVICE WORKER CLEANUP:', e); }
   });
 }
 </script>
