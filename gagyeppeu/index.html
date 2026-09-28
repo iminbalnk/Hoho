@@ -2411,6 +2411,10 @@ function deleteManualRecent(id){
 
 /* ================= 탭 전환 ================= */
 function showTab(name){
+ try{
+  localStorage.setItem("gagyeppeuLastTab", name);
+}catch(e){}
+ 
  const dash=document.getElementById("dashboard");
  if(dash) dash.classList.toggle("hide", name!=="input");
  ["input","expenses","accounts","report","settings"].forEach(t=>{
@@ -2798,15 +2802,45 @@ async function _initAuthImpl(){
   }
   setupAuthListener();
   try{
-    const session=await restoreAuthSession();
-    if(session){
-      cloudStatus(" 연결됨 · 로그인 상태");
-      await updateCloudUser().catch(()=>{});
-      await cloudPull();
-    }else{
-      cloudStatus("로그인하지 않았어요"+(window.__gagyeppeuAuthReason?" · "+window.__gagyeppeuAuthReason:"")+authLastEventText());
-      await updateCloudUser().catch(()=>{});
-    }
+    let session = await restoreAuthSession();
+ 
+if(!session){
+const saved = getAuthBackup();
+ 
+if(saved){
+try{
+const result =
+await window.__gagyeppeuSupabaseClient.auth.setSession({
+access_token: saved.access_token,
+refresh_token: saved.refresh_token
+});
+ 
+if(!result.error && result.data?.session){
+session = result.data.session;
+saveAuthBackup(session);
+}
+}catch(e){
+console.warn("AUTH BACKUP RESTORE RETRY ERROR:", e);
+}
+}
+}
+ 
+if(session){
+window.__gagyeppeuLoggedIn = true;
+cloudStatus("연결됨 · 로그인 상태");
+await updateCloudUser().catch(()=>{});
+await cloudPull();
+}else{
+window.__gagyeppeuLoggedIn = false;
+cloudStatus(
+"로그인하지 않았어요" +
+(window.__gagyeppeuAuthReason
+? " · " + window.__gagyeppeuAuthReason
+: "") +
+authLastEventText()
+);
+await updateCloudUser().catch(()=>{});
+}
   }catch(e){
     console.error("AUTH INIT ERROR:",e);
     updateCloudUser().catch(()=>{});
@@ -2861,6 +2895,14 @@ document.addEventListener("visibilitychange",retryAuthRestore);
 
    // 클라우드 로그인 복원: 라이브러리 로딩이 늦거나 실패해도 다시 시도합니다.
    initAuth();
+  try{
+const lastTab = localStorage.getItem("gagyeppeuLastTab") || "input";
+const validTabs = ["input", "expenses", "accounts", "report", "settings"];
+ 
+showTab(validTabs.includes(lastTab) ? lastTab : "input");
+}catch(e){
+showTab("input");
+}
  } catch(e) {
    console.error("APP INIT ERROR:", e);
    const msg=document.getElementById("title");
