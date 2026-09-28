@@ -928,8 +928,8 @@ const COLORS = ["#1b5e42","#2a9d8f","#e07a5f","#f2cc8f","#81b29a","#6d597a","#b5
 let cloudSyncing = false;
 let cloudLoading = false;
 window.__gagyeppeuSupabaseClient = null;
-let gagyeppeuHouseholdId = localStorage.getItem("gagyeppeuHouseholdId") || "";
-let householdShareCode = localStorage.getItem("householdShareCode") || "";
+var gagyeppeuHouseholdId = localStorage.getItem("gagyeppeuHouseholdId") || "";
+var householdShareCode = localStorage.getItem("householdShareCode") || "";
 
 // household_id는 Supabase UUID 형식인지 확인합니다.
 const HOUSEHOLD_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
