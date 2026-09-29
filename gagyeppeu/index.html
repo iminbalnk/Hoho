@@ -1128,52 +1128,35 @@ async function cloudLogin(){
    return;
   }
 
-  const c=cloudCfg();
-  // 이전에 실제로 로그인과 데이터 저장이 정상 작동했던 방식 그대로
-  // Supabase Auth REST에서 세션을 받은 뒤 SDK에 넣습니다.
-  const response=await fetch(c.url.replace(/\/$/,"")+"/auth/v1/token?grant_type=password",{
-   method:"POST",
-   headers:{
-    "apikey":c.key,
-    "Authorization":"Bearer "+c.key,
-    "Content-Type":"application/json"
-   },
-   body:JSON.stringify({email,password})
+  cloudStatus("로그인 중…");
+  const {data,error}=await window.__gagyeppeuSupabaseClient.auth.signInWithPassword({
+   email,
+   password
   });
-
-  let body=null;
-  try{body=await response.json();}catch(e){}
-  if(!response.ok){
-   const msg=body?.msg||body?.message||body?.error_description||body?.error||("HTTP "+response.status);
-   const code=body?.code||body?.error_code||"";
-   alert("로그인 실패\n\n"+msg+(code?"\n\n코드: "+code:""));
-   return;
-  }
-  if(!body?.access_token||!body?.refresh_token){
-   alert("로그인은 처리됐지만 세션 정보가 오지 않았어요.\nSupabase Auth 설정을 확인해주세요.");
-   return;
+  if(error) throw error;
+  if(!data?.session){
+   throw new Error("로그인은 처리됐지만 세션을 저장하지 못했어요.");
   }
 
-  const sessionResult=await window.__gagyeppeuSupabaseClient.auth.setSession({
-   access_token:body.access_token,
-   refresh_token:body.refresh_token
-  });
-  if(sessionResult?.error) throw sessionResult.error;
-  saveAuthBackup(sessionResult?.data?.session||body);
-
-  document.getElementById("sbPassword").value="";
-  cloudStatus("로그인됨");
-  await updateCloudUser();
+  saveAuthBackup(data.session);
+  window.__gagyeppeuLoggedIn=true;
+  window.__gagyeppeuSignedOut=false;
+  const pw=document.getElementById("sbPassword");
+  if(pw)pw.value="";
+  applyAuthUi(data.session);
+  cloudStatus("연결됨 · 로그인 상태");
   await cloudPull();
  }catch(e){
-  console.error("LOGIN REST ERROR:",e);
+  console.error("LOGIN ERROR:",e);
+  cloudStatus("로그인 실패");
   alert("로그인 중 오류가 발생했어요.\n\n"+(e?.message||String(e)));
  }
 }
 async function cloudLogout(){
- // scope:'local' = 이 기기만 로그아웃. (기본값은 같은 계정의 모든 기기를 로그아웃시켜요)
- if(window.__gagyeppeuSupabaseClient) await window.__gagyeppeuSupabaseClient.auth.signOut({scope:"local"});
+ window.__gagyeppeuManualLogout=true;
  clearAuthBackup();
+ // scope:'local' = 이 기기만 로그아웃합니다.
+ if(window.__gagyeppeuSupabaseClient) await window.__gagyeppeuSupabaseClient.auth.signOut({scope:"local"});
  // 로그아웃해도 연결된 가계부 정보는 유지합니다. 다시 로그인하면 자동으로 불러옵니다.
  cloudStatus("로그아웃됨");
  updateCloudUser();
@@ -1184,20 +1167,30 @@ async function getCloudUserData(){
   return {user:data?.session?.user||null};
  }catch(e){return {user:null};}
 }
-async function updateCloudUser(){
- if(!window.__gagyeppeuSupabaseClient)return;
- let user=null,err=null;
- try{const r=await window.__gagyeppeuSupabaseClient.auth.getSession();user=r?.data?.session?.user||null;err=r?.error||null;}catch(e){err=e;}
- // 네트워크 오류 같은 일시적 실패 때문에 로그인이 풀린 것처럼 보이지 않게, 화면 상태를 그대로 둡니다.
- if(!user&&err&&getAuthBackup()){cloudStatus("네트워크를 확인하는 중이에요. 잠시 후 자동으로 다시 시도해요.");return;}
+function applyAuthUi(session){
+ const user=session?.user||null;
  window.__gagyeppeuLoggedIn=!!user;
- const data={user};
  const el=document.getElementById("cloudUser");
  const logout=document.getElementById("authLogoutBtn");
  const fields=document.getElementById("loginFields");
- if(el)el.textContent=data?.user?`로그인: ${data.user.email}`:"로그인하지 않았어요.";
- if(logout)logout.style.display=data?.user?"block":"none";
- if(fields)fields.style.display=data?.user?"none":"block";
+ if(el)el.textContent=user?`로그인: ${user.email}`:"로그인하지 않았어요.";
+ if(logout)logout.style.display=user?"block":"none";
+ if(fields)fields.style.display=user?"none":"block";
+}
+async function updateCloudUser(){
+ if(!window.__gagyeppeuSupabaseClient)return;
+ try{
+  const {data,error}=await window.__gagyeppeuSupabaseClient.auth.getSession();
+  if(error)throw error;
+  applyAuthUi(data?.session||null);
+ }catch(e){
+  console.warn("AUTH UI UPDATE ERROR:",e);
+  if(getAuthBackup()){
+   cloudStatus("로그인 정보를 확인하는 중이에요.");
+  }else{
+   applyAuthUi(null);
+  }
+ }
 }
 async function cloudCreateHousehold(){
  if(!window.__gagyeppeuSupabaseClient && !setCloudClient()){alert("먼저 로그인해주세요.");return;}
@@ -2760,20 +2753,20 @@ function setupAuthListener(){
   if(__authListenerSet||!window.__gagyeppeuSupabaseClient)return;
   __authListenerSet=true;
   window.__gagyeppeuSupabaseClient.auth.onAuthStateChange((event,session)=>{
-    // 나중에 왜 풀렸는지 확인할 수 있게 마지막 인증 이벤트를 남깁니다.
     try{localStorage.setItem("gagyeppeuAuthLastEvent",JSON.stringify({event,hasSession:!!session,at:new Date().toISOString()}));}catch(e){}
+
     if(session){
       saveAuthBackup(session);
-      cloudStatus(" 연결됨 · 로그인 상태");
-    }else if(event === "SIGNED_OUT"){
+      window.__gagyeppeuSignedOut=false;
+      applyAuthUi(session);
+      cloudStatus("연결됨 · 로그인 상태");
+    }else if(event==="SIGNED_OUT"){
       window.__gagyeppeuSignedOut=true;
-      // 직접 로그아웃(cloudLogout)일 때만 백업을 지웁니다. 일시적인 오류로 SDK가 세션을 지워도 백업으로 다시 복원할 수 있게 둡니다.
+      applyAuthUi(null);
       cloudStatus("로그아웃됨");
     }
-    updateCloudUser().catch(()=>{});
   });
 }
-
 function authLastEventText(){
   try{
     const x=JSON.parse(localStorage.getItem("gagyeppeuAuthLastEvent")||"null");
@@ -2790,7 +2783,7 @@ async function initAuth(){
 }
 async function _initAuthImpl(){
   try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
-  // CDN 스크립트가 늦거나 한 번 실패해도 최대 3번까지 다시 불러옵니다.
+
   let ok=false;
   for(let i=0;i<3&&!ok;i++){
     ok=await ensureCloudClient();
@@ -2800,53 +2793,34 @@ async function _initAuthImpl(){
     cloudStatus("클라우드 라이브러리를 불러오지 못했어요. 인터넷 연결 후 새로고침해 주세요.");
     return;
   }
-  setupAuthListener();
+
   try{
-    let session = await restoreAuthSession();
- 
-if(!session){
-const saved = getAuthBackup();
- 
-if(saved){
-try{
-const result =
-await window.__gagyeppeuSupabaseClient.auth.setSession({
-access_token: saved.access_token,
-refresh_token: saved.refresh_token
-});
- 
-if(!result.error && result.data?.session){
-session = result.data.session;
-saveAuthBackup(session);
-}
-}catch(e){
-console.warn("AUTH BACKUP RESTORE RETRY ERROR:", e);
-}
-}
-}
- 
-if(session){
-window.__gagyeppeuLoggedIn = true;
-cloudStatus("연결됨 · 로그인 상태");
-await updateCloudUser().catch(()=>{});
-await cloudPull();
-}else{
-window.__gagyeppeuLoggedIn = false;
-cloudStatus(
-"로그인하지 않았어요" +
-(window.__gagyeppeuAuthReason
-? " · " + window.__gagyeppeuAuthReason
-: "") +
-authLastEventText()
-);
-await updateCloudUser().catch(()=>{});
-}
+    cloudStatus("로그인 정보 확인 중…");
+    const session=await restoreAuthSession();
+    setupAuthListener();
+
+    if(session){
+      window.__gagyeppeuLoggedIn=true;
+      window.__gagyeppeuSignedOut=false;
+      applyAuthUi(session);
+      cloudStatus("연결됨 · 로그인 상태");
+      await cloudPull();
+    }else{
+      window.__gagyeppeuLoggedIn=false;
+      applyAuthUi(null);
+      cloudStatus(
+        "로그인하지 않았어요"+
+        (window.__gagyeppeuAuthReason?" · "+window.__gagyeppeuAuthReason:"")+
+        authLastEventText()
+      );
+    }
   }catch(e){
     console.error("AUTH INIT ERROR:",e);
-    updateCloudUser().catch(()=>{});
+    setupAuthListener();
+    if(getAuthBackup()) cloudStatus("로그인 정보를 다시 확인해주세요.");
+    else applyAuthUi(null);
   }
 }
-
 // 오프라인이었다가 돌아오거나 앱을 다시 열었을 때, 로그아웃 상태로 보이면 복원을 다시 시도합니다.
 function retryAuthRestore(){
   if(document.visibilityState==="hidden"||window.__gagyeppeuLoggedIn)return;
