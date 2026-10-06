@@ -561,6 +561,26 @@ body,input,select,textarea,button,h1,h2,h3,h4,h5,h6,.btn,.navbar button,.chip,la
 .monthly-bar-fill{height:100%;border-radius:10px;background:var(--accent,#b78b65);min-width:0;}
 .monthly-bar-month{color:var(--sub);}
 .monthly-bar-amount{text-align:right;font-weight:700;}
+
+/* ===== hanji clean UI ===== */
+html{background:#eee7db;}
+body{
+  background:
+    radial-gradient(circle at 20% 10%,rgba(255,255,255,.62) 0 1px,transparent 1.5px),
+    radial-gradient(circle at 75% 35%,rgba(126,108,83,.08) 0 1px,transparent 1.4px),
+    repeating-linear-gradient(0deg,rgba(122,101,75,.035) 0,rgba(122,101,75,.035) 1px,transparent 1px,transparent 4px),
+    #f1eadf;
+  background-size:17px 19px,23px 21px,100% 5px,auto;
+  min-height:100vh;
+}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.28;background:repeating-linear-gradient(93deg,transparent 0 38px,rgba(150,132,105,.06) 39px,transparent 40px);z-index:-1;}
+.head{padding:3px 2px 8px;}
+.head h2{font-size:21px;letter-spacing:-.04em;color:#6e665b;}
+.card,.bulk-card{background:rgba(255,252,246,.88);backdrop-filter:blur(2px);border:1px solid rgba(180,163,140,.34);box-shadow:0 7px 22px rgba(105,87,66,.055);}
+.hero{background:linear-gradient(145deg,#9eae96,#879a80)!important;box-shadow:0 9px 22px rgba(94,111,86,.14);}
+.btn{background:#98a98f!important;color:#fffdf8!important;}
+.btn.sub,.btn.secondary{background:#e7ded1!important;color:#6d6459!important;}
+.navbar{background:rgba(255,251,245,.94);backdrop-filter:blur(10px);border-top:1px solid rgba(177,159,136,.32);}
 </style>
 <style id="pretendard-override">
 html, body, input, select, textarea, button, option {
@@ -1005,6 +1025,7 @@ const GAGYEPPEU_AUTH_BACKUP_KEY="gagyeppeuAuthBackupV4";
 function saveAuthBackup(session){
   try{
     if(session?.access_token&&session?.refresh_token){
+      localStorage.setItem("gagyeppeuLoginHint","1");
       localStorage.setItem(GAGYEPPEU_AUTH_BACKUP_KEY,JSON.stringify({
         access_token:session.access_token,
         refresh_token:session.refresh_token
@@ -1012,7 +1033,7 @@ function saveAuthBackup(session){
     }
   }catch(e){console.warn("AUTH BACKUP SAVE ERROR",e);}
 }
-function clearAuthBackup(){try{localStorage.removeItem(GAGYEPPEU_AUTH_BACKUP_KEY);}catch(e){}}
+function clearAuthBackup(){try{localStorage.removeItem(GAGYEPPEU_AUTH_BACKUP_KEY);localStorage.removeItem("gagyeppeuLoginHint");}catch(e){}}
 function getAuthBackup(){
   try{
     const x=JSON.parse(localStorage.getItem(GAGYEPPEU_AUTH_BACKUP_KEY)||"null");
@@ -1042,7 +1063,7 @@ function setCloudClient(){
      window.__gagyeppeuSupabaseClient=window.supabase.createClient(c.url,c.key,{
        auth:{
          storage:authStorage(),
-         storageKey:"gagyeppeu-supabase-auth-v1",
+         storageKey:"sb-fegoelbzlomrthtpbafb-auth-token",
          persistSession:true,
          autoRefreshToken:true,
          detectSessionInUrl:false
@@ -1150,6 +1171,7 @@ async function cloudLogin(){
   });
   if(sessionResult?.error) throw sessionResult.error;
   saveAuthBackup(sessionResult?.data?.session||body);
+  window.__gagyeppeuLoggedIn=true;
 
   document.getElementById("sbPassword").value="";
   cloudStatus("로그인됨");
@@ -1178,8 +1200,15 @@ async function updateCloudUser(){
  if(!window.__gagyeppeuSupabaseClient)return;
  let user=null,err=null;
  try{const r=await window.__gagyeppeuSupabaseClient.auth.getSession();user=r?.data?.session?.user||null;err=r?.error||null;}catch(e){err=e;}
- // 네트워크 오류 같은 일시적 실패 때문에 로그인이 풀린 것처럼 보이지 않게, 화면 상태를 그대로 둡니다.
- if(!user&&err&&getAuthBackup()){cloudStatus("네트워크를 확인하는 중이에요. 잠시 후 자동으로 다시 시도해요.");return;}
+ // 새로고침 직후 Supabase가 세션을 복원하기 전 null을 반환할 수 있습니다.
+ // 이 순간 로그아웃 화면으로 바꾸면 iPhone Safari에서 로그인 화면으로 튕기는 현상이 생깁니다.
+ if(!user){
+   const hasHint=localStorage.getItem("gagyeppeuLoginHint")==="1" || !!getAuthBackup();
+   if(err || hasHint){
+     cloudStatus(err ? "로그인 상태를 확인하는 중이에요…" : "로그인 상태를 복원하는 중이에요…");
+     return;
+   }
+ }
  window.__gagyeppeuLoggedIn=!!user;
  const data={user};
  const el=document.getElementById("cloudUser");
@@ -2701,6 +2730,7 @@ async function _restoreAuthSessionImpl(){
   // 1) Supabase가 자체 저장소에서 복원한 세션을 우선 사용
   const current=await client.auth.getSession();
   if(current?.data?.session){
+    window.__gagyeppeuLoggedIn=true;
     saveAuthBackup(current.data.session);
     return current.data.session;
   }
@@ -2725,6 +2755,7 @@ async function _restoreAuthSessionImpl(){
   });
   if(restored?.error)throw restored.error;
   if(restored?.data?.session){
+    window.__gagyeppeuLoggedIn=true;
     saveAuthBackup(restored.data.session);
     return restored.data.session;
   }
@@ -2749,6 +2780,7 @@ function setupAuthListener(){
     // 나중에 왜 풀렸는지 확인할 수 있게 마지막 인증 이벤트를 남깁니다.
     try{localStorage.setItem("gagyeppeuAuthLastEvent",JSON.stringify({event,hasSession:!!session,at:new Date().toISOString()}));}catch(e){}
     if(session){
+      window.__gagyeppeuLoggedIn=true;
       saveAuthBackup(session);
       cloudStatus(" 연결됨 · 로그인 상태");
     }else if(event === "SIGNED_OUT"){
@@ -2794,8 +2826,15 @@ async function _initAuthImpl(){
       await updateCloudUser().catch(()=>{});
       await cloudPull();
     }else{
-      cloudStatus("로그인하지 않았어요"+(window.__gagyeppeuAuthReason?" · "+window.__gagyeppeuAuthReason:"")+authLastEventText());
-      await updateCloudUser().catch(()=>{});
+      // 새로고침 직후 한 번의 getSession null만으로 로그아웃 처리하지 않습니다.
+      const hinted=localStorage.getItem("gagyeppeuLoginHint")==="1" || !!getAuthBackup();
+      if(hinted){
+        cloudStatus("로그인 상태를 복원하는 중이에요…");
+        setTimeout(()=>retryAuthRestore(),1200);
+      }else{
+        cloudStatus("로그인하지 않았어요"+(window.__gagyeppeuAuthReason?" · "+window.__gagyeppeuAuthReason:"")+authLastEventText());
+        await updateCloudUser().catch(()=>{});
+      }
     }
   }catch(e){
     console.error("AUTH INIT ERROR:",e);
