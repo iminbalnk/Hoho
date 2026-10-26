@@ -821,7 +821,7 @@ body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.28;ba
  <button id="btn-settings" onclick="showTab('settings')"><span class="ico"></span>설정</button>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 /* ================= 앱 오류 표시 ================= */
 window.addEventListener("error", function(e){
@@ -989,8 +989,8 @@ function ensureSupabaseLoaded(){
    if(__gagyeppeuSupabaseLoading){ __gagyeppeuSupabaseLoading.then(resolve); return; }
    __gagyeppeuSupabaseLoading = new Promise((done)=>{
      const urls=[
-       'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js',
-       'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js'
+       'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js',
+       'https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js'
      ];
      let i=0;
      const loadNext=()=>{
@@ -1012,25 +1012,14 @@ function ensureSupabaseLoaded(){
  });
 }
 const GAGYEPPEU_AUTH_BACKUP_KEY="gagyeppeuAuthBackupV4";
-function saveAuthBackup(session){
-  try{
-    if(session?.access_token&&session?.refresh_token){
-      localStorage.setItem(GAGYEPPEU_AUTH_BACKUP_KEY,JSON.stringify({
-        access_token:session.access_token,
-        refresh_token:session.refresh_token,
-        saved_at:new Date().toISOString()
-      }));
-      localStorage.setItem("gagyeppeuLoginHint","1");
-    }
-  }catch(e){console.warn("AUTH BACKUP SAVE ERROR",e);}
-}
+// [수정] 토큰 백업 사본을 더 이상 만들지 않습니다.
+// Supabase의 refresh token은 한 번 쓰면 폐기되는(회전) 일회용이라,
+// 백업해 둔 옛 토큰으로 setSession을 하면 서버가 "재사용"으로 판단해
+// 세션 전체를 끊어버립니다. 세션은 SDK 저장소 한 곳에서만 관리합니다.
+function saveAuthBackup(session){}
 function clearAuthBackup(){try{localStorage.removeItem(GAGYEPPEU_AUTH_BACKUP_KEY);localStorage.removeItem("gagyeppeuLoginHint");}catch(e){}}
-function getAuthBackup(){
-  try{
-    const x=JSON.parse(localStorage.getItem(GAGYEPPEU_AUTH_BACKUP_KEY)||"null");
-    return x?.access_token&&x?.refresh_token?x:null;
-  }catch(e){return null;}
-}
+function getAuthBackup(){ return null; }
+clearAuthBackup(); // 예전 버전이 남긴 옛 토큰 사본 정리
 function authStorage(){
   return {
     getItem:(key)=>{
@@ -1172,19 +1161,6 @@ async function updateCloudUser(force=false){
  if(err){
    if(getAuthBackup()) cloudStatus("로그인 상태를 확인하는 중이에요…");
    return session?.user||null;
- }
- if(!session){
-   // 저장된 백업이 있으면 먼저 복원을 시도합니다. 사용자가 직접 로그아웃한 경우만 예외입니다.
-   const saved=getAuthBackup();
-   if(saved && !window.__gagyeppeuSignedOut){
-     try{
-       const r=await window.__gagyeppeuSupabaseClient.auth.setSession({access_token:saved.access_token,refresh_token:saved.refresh_token});
-       if(r?.data?.session){
-         session=r.data.session;
-         saveAuthBackup(session);
-       }
-     }catch(e){console.warn("SESSION RESTORE FROM BACKUP",e);}
-   }
  }
  if(session?.user){
    window.__gagyeppeuLoggedIn=true;
@@ -2747,24 +2723,8 @@ async function _restoreAuthSessionImpl(){
     window.__gagyeppeuAuthReason="네트워크를 확인하는 중이에요";
     return null;
   }
-  const saved=getAuthBackup();
-  if(!saved){
-    window.__gagyeppeuAuthReason="저장된 로그인 정보가 없어요";
-    return null;
-  }
-  // 백업 토큰 복원은 한 번만 수행합니다. 실패해도 백업을 즉시 지우지 않습니다.
-  const restored=await client.auth.setSession({access_token:saved.access_token,refresh_token:saved.refresh_token});
-  if(restored?.error){
-    window.__gagyeppeuAuthReason="저장된 세션을 확인하는 중이에요";
-    console.warn("AUTH BACKUP RESTORE ERROR",restored.error);
-    return null;
-  }
-  if(restored?.data?.session){
-    window.__gagyeppeuLoggedIn=true;
-    window.__gagyeppeuSignedOut=false;
-    saveAuthBackup(restored.data.session);
-    return restored.data.session;
-  }
+  window.__gagyeppeuAuthReason="저장된 로그인 정보가 없어요";
+  return null;
  }catch(e){
   console.error("AUTH RESTORE ERROR:",e);
   window.__gagyeppeuAuthReason="로그인 상태를 확인하는 중이에요";
